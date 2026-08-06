@@ -11,6 +11,8 @@ TokTickIT is an IT service desk application for Account and Access, Hardware, So
 ```bash
 cd server
 cp .env.example .env
+# Edit .env and update DATABASE_URL with your local PostgreSQL credentials
+
 npm install
 npx prisma db push
 npm run dev
@@ -20,6 +22,8 @@ npm run dev
 ```bash
 cd client
 cp .env.example .env
+# Edit .env to set API endpoints or app keys if required
+
 npm install
 npm run dev
 ```
