@@ -1,14 +1,19 @@
 import { useState } from "react";
-import { checkSystem } from "./api.js";
+import { checkSystem, Category } from "./api.js";
 
 // UI states you must handle for Issue 4: idle, loading, success, error.
 type UiState = "idle" | "loading" | "success" | "error";
 
 export default function App() {
   const [state, setState] = useState<UiState>("idle");
+  const [categories, setCategories] = useState<Category[]>([]);
+  void categories;
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   async function handleCheck() {
+    // TODO(Issue 4): set loading, call checkSystem(), then either
+    //   - success: store categories and show Online + the list, or
+    //   - error: show Offline + a useful message.
     setState("loading");
     setErrorMessage("");
     try {
@@ -26,10 +31,11 @@ export default function App() {
         TokTickIT <span className="text-success">IT Service Desk</span>
       </h1>
 
-      <button className="btn btn-success mb-4" onClick={handleCheck} disabled={state === "loading"}>
+      <button className="btn btn-success" onClick={handleCheck} disabled={state === "loading"}>
         {state === "loading" ? "Loading…" : "Check System"}
       </button>
 
+      {/* TODO(Issue 4): render loading / success (Online + categories) / error (Offline) states. */}
       {state === "success" && (
         <div className="alert alert-success">
           <div className="fw-bold">Status: Online</div>
