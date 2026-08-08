@@ -22,9 +22,16 @@ export async function checkSystem(): Promise<SystemStatus> {
     throw new Error(`Health check failed with status ${healthRes.status}`);
   }
 
+  const categoriesRes = await fetch(`${API_URL}/api/categories`);
+  if (!categoriesRes.ok) {
+    throw new Error(`Categories fetch failed with status ${categoriesRes.status}`);
+  }
+
+  const categories = await categoriesRes.json();
+
   // Categories fetch will be added in Issue 4
   return {
     online: true,
-    categories: [],
+    categories: categories,
   };
 }
