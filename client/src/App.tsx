@@ -17,7 +17,8 @@ export default function App() {
     setState("loading");
     setErrorMessage("");
     try {
-      await checkSystem();
+      const result = await checkSystem();
+      setCategories(result.categories);
       setState("success");
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Backend is unavailable.");
@@ -39,6 +40,11 @@ export default function App() {
       {state === "success" && (
         <div className="alert alert-success">
           <div className="fw-bold">Status: Online</div>
+          <ul>
+            {categories.map((cat) => (
+              <li key={cat.id}>{cat.name}</li>
+            ))}
+          </ul>
         </div>
       )}
 
