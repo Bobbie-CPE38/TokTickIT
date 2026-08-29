@@ -24,10 +24,6 @@ export const RequesterSelectorModal: React.FC = () => {
     }
   }, [currentRequester, activeRequesters]);
 
-  if (!isSelectorOpen) {
-    return null;
-  }
-
   const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
     const idNum = parseInt(selectedId, 10);

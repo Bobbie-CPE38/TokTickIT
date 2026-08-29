@@ -82,9 +82,9 @@ function MainContent() {
 }
 
 function AppBody() {
-  const { currentRequester, isSelectorOpen } = useRequester();
+  const { currentRequester, isSelectorOpen, error } = useRequester();
 
-  if (!currentRequester || isSelectorOpen) {
+  if (!currentRequester || isSelectorOpen || Boolean(error)) {
     return <RequesterSelectorModal />;
   }
 
