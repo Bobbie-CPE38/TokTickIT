@@ -60,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
           <nav className="d-flex align-items-center gap-3">
             <button
               type="button"
-              className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-1.5 px-2 py-1 small fw-medium"
+              className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-2 px-2 py-1 small fw-medium"
               style={{
                 fontSize: "0.9rem",
                 opacity: currentView === "portal" || currentView === "my-tickets" ? 1 : 0.85,
@@ -93,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
 
             <button
               type="button"
-              className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-1.5 px-2 py-1 small fw-medium"
+              className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-2 px-2 py-1 small fw-medium"
               style={{
                 fontSize: "0.9rem",
                 opacity: currentView === "create-ticket" ? 1 : 0.85,

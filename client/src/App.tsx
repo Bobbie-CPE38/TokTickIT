@@ -51,7 +51,7 @@ function MainContent({ onNavigateCreate }: MainContentProps) {
             </h2>
             <button
               type="button"
-              className="btn btn-sm px-3 fw-medium text-white d-flex align-items-center gap-1.5"
+              className="btn btn-sm px-3 fw-medium text-white d-flex align-items-center gap-2"
               style={{ backgroundColor: "#006B3C" }}
               onClick={onNavigateCreate}
             >
