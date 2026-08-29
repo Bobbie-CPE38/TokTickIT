@@ -22,7 +22,12 @@ export const RequesterProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [currentRequester, setCurrentRequester] = useState<DevelopmentRequester | null>(null);
   const [loadingRequesters, setLoadingRequesters] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSelectorOpen, setIsSelectorOpen] = useState<boolean>(false);
+  const [isSelectorOpen, setIsSelectorOpen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return !localStorage.getItem(STORAGE_KEY);
+    }
+    return true;
+  });
 
   const loadRequesters = useCallback(async () => {
     setLoadingRequesters(true);

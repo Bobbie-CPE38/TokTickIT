@@ -81,17 +81,27 @@ function MainContent() {
   );
 }
 
+function AppBody() {
+  const { currentRequester, isSelectorOpen } = useRequester();
+
+  if (!currentRequester || isSelectorOpen) {
+    return <RequesterSelectorModal />;
+  }
+
+  return <MainContent />;
+}
+
 export default function App() {
   return (
     <RequesterProvider>
       <div style={{ minHeight: "100vh", backgroundColor: "#F5F7F6" }}>
         <Header />
         <main>
-          <MainContent />
+          <AppBody />
         </main>
-        <RequesterSelectorModal />
       </div>
     </RequesterProvider>
   );
 }
+
 

@@ -65,12 +65,8 @@ describe("UI-04: Development Requester Context and Selector", () => {
 
     // Ensure options are populated with the active requesters
     await waitFor(() => {
-      expect(
-        screen.getByText(/Jennifer Anderson \(Computer Engineering\) - jennifer\.anderson@kmutt\.ac\.th/i)
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/David Lee \(Information Technology\) - david\.lee@kmutt\.ac\.th/i)
-      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Jennifer Anderson" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "David Lee" })).toBeInTheDocument();
     });
 
     // Inactive requester (Alex Inactive) must NOT be present (AC-05, BR-05)
@@ -118,7 +114,10 @@ describe("UI-04: Development Requester Context and Selector", () => {
     expect(screen.getAllByText(/Information Technology/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText(/Select a Development Requester to test/i)).not.toBeInTheDocument();
 
-    // Click Switch/Change Requester button in header
+    // Click Profile button in header to open dropdown menu, then click Switch Requester
+    const profileBtn = screen.getByRole("button", { name: /Profile/i });
+    fireEvent.click(profileBtn);
+
     const switchBtn = screen.getByRole("button", { name: /Switch Requester|Change Requester/i });
     fireEvent.click(switchBtn);
 
@@ -161,9 +160,7 @@ describe("UI-04: Development Requester Context and Selector", () => {
     // Should reload and succeed
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);
-      expect(
-        screen.getByText(/Jennifer Anderson \(Computer Engineering\) - jennifer\.anderson@kmutt\.ac\.th/i)
-      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Jennifer Anderson" })).toBeInTheDocument();
     });
   });
 });
