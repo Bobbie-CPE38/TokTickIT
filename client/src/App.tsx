@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { checkSystem, Category } from "./api.js";
+import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
+import { Header } from "./components/Header.js";
+import { RequesterSelectorModal } from "./components/RequesterSelectorModal.js";
 
-// UI states you must handle for Issue 4: idle, loading, success, error.
 type UiState = "idle" | "loading" | "success" | "error";
 
-export default function App() {
+function MainContent() {
+  const { currentRequester } = useRequester();
   const [state, setState] = useState<UiState>("idle");
   const [categories, setCategories] = useState<Category[]>([]);
-  void categories;
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   async function handleCheck() {
-    // TODO(Issue 4): set loading, call checkSystem(), then either
-    //   - success: store categories and show Online + the list, or
-    //   - error: show Offline + a useful message.
     setState("loading");
     setErrorMessage("");
     try {
@@ -27,33 +26,82 @@ export default function App() {
   }
 
   return (
-    <div className="container py-5" style={{ maxWidth: 640 }}>
-      <h1 className="h3 mb-4">
-        TokTickIT <span className="text-success">IT Service Desk</span>
-      </h1>
+    <div className="container py-4" style={{ maxWidth: 800 }}>
+      <div className="card shadow-sm border-0 mb-4" style={{ backgroundColor: "#FFFFFF" }}>
+        <div className="card-body p-4">
+          <h2 className="h4 mb-3" style={{ color: "#1C2D27" }}>
+            IT Service Desk Portal
+          </h2>
+          {currentRequester ? (
+            <p className="text-muted mb-4">
+              Active Requester: <strong>{currentRequester.name}</strong> ({currentRequester.department})
+            </p>
+          ) : (
+            <p className="text-muted mb-4">Please select a requester identity to proceed.</p>
+          )}
 
-      <button className="btn btn-success mb-4" onClick={handleCheck} disabled={state === "loading"}>
-        {state === "loading" ? "Loading…" : "Check System"}
-      </button>
+          <div className="border-top pt-3">
+            <h3 className="h6 text-muted mb-3">System Health & Catalog Status</h3>
+            <button
+              className="btn mb-3"
+              style={{ backgroundColor: "#006B3C", color: "#FFFFFF" }}
+              onClick={handleCheck}
+              disabled={state === "loading"}
+            >
+              {state === "loading" ? "Loading…" : "Check System"}
+            </button>
 
-      {/* TODO(Issue 4): render loading / success (Online + categories) / error (Offline) states. */}
-      {state === "success" && (
-        <div className="alert alert-success">
-          <div className="fw-bold">Status: Online</div>
-          <ul>
-            {categories.map((cat) => (
-              <li key={cat.id}>{cat.name}</li>
-            ))}
-          </ul>
+            {state === "success" && (
+              <div
+                className="alert alert-success"
+                style={{ backgroundColor: "#EAF6EF", borderColor: "#A7F3D0", color: "#065F46" }}
+              >
+                <div className="fw-bold">Status: Online</div>
+                <ul className="mb-0 mt-2">
+                  {categories.map((cat) => (
+                    <li key={cat.id}>{cat.name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {state === "error" && (
+              <div
+                className="alert alert-danger"
+                style={{ backgroundColor: "#FEE2E2", borderColor: "#EF4444", color: "#991B1B" }}
+              >
+                <div className="fw-bold mb-1">Status: Offline</div>
+                <div>{errorMessage || "Backend is unavailable."}</div>
+              </div>
+            )}
+          </div>
         </div>
-      )}
-
-      {state === "error" && (
-        <div className="alert alert-danger">
-          <div className="fw-bold mb-1">Status: Offline</div>
-          <div>{errorMessage || "Backend is unavailable."}</div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
+
+function AppBody() {
+  const { currentRequester, isSelectorOpen, error } = useRequester();
+
+  if (!currentRequester || isSelectorOpen || Boolean(error)) {
+    return <RequesterSelectorModal />;
+  }
+
+  return <MainContent />;
+}
+
+export default function App() {
+  return (
+    <RequesterProvider>
+      <div style={{ minHeight: "100vh", backgroundColor: "#F5F7F6" }}>
+        <Header />
+        <main>
+          <AppBody />
+        </main>
+      </div>
+    </RequesterProvider>
+  );
+}
+
+

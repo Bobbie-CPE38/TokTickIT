@@ -4,10 +4,22 @@ import App from "../../src/App.js";
 import * as api from "../../src/api.js";
 
 describe("App", () => {
+  beforeEach(() => {
+    localStorage.setItem("toktickit_requester_id", "1");
+    vi.spyOn(api, "fetchActiveRequesters").mockResolvedValue([
+      {
+        id: 1,
+        name: "Jennifer Anderson",
+        email: "jennifer.anderson@kmutt.ac.th",
+        department: "Computer Engineering",
+      },
+    ]);
+  });
+
   // WORKED EXAMPLE — provided for you.
-  it("renders the TokTickIT heading", () => {
+  it("renders the TokTickIT heading", async () => {
     render(<App />);
-    expect(screen.getByText(/TokTickIT/i)).toBeInTheDocument();
+    expect(await screen.findByText(/TokTickIT/i)).toBeInTheDocument();
   });
 
   // Issue 4 — write these yourself. Hint: mock the api module with
@@ -25,7 +37,8 @@ describe("App", () => {
     });
 
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: /Check System/i }));
+    const checkBtn = await screen.findByRole("button", { name: /Check System/i });
+    fireEvent.click(checkBtn);
 
     await screen.findByText(/Status: Online/i);
     expect(screen.getByText(/Account and Access/i)).toBeInTheDocument();
@@ -38,7 +51,8 @@ describe("App", () => {
     vi.spyOn(api, "checkSystem").mockRejectedValue(new Error("Backend is unavailable."));
 
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: /Check System/i }));
+    const checkBtn = await screen.findByRole("button", { name: /Check System/i });
+    fireEvent.click(checkBtn);
 
     await screen.findByText(/Status: Offline/i);
     expect(screen.getByText(/Backend is unavailable./i)).toBeInTheDocument();

@@ -35,6 +35,7 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
     const prisma = getPrisma();
 
     const categories = await prisma.category.findMany({
+      where: { isActive: true },
       select: { id: true, name: true },
       orderBy: { id: "asc" },
     });
@@ -45,5 +46,32 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
     res.status(500).json({ error: "Unable to load categories." });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Lab 2 — List Active Development Requesters
+// GET /api/requesters/active
+// ---------------------------------------------------------------------------
+app.get("/api/requesters/active", async (_req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+
+    const requesters = await prisma.developmentRequester.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        department: true,
+      },
+      orderBy: { id: "asc" },
+    });
+
+    res.status(200).json(requesters);
+  } catch (error) {
+    console.error("[API ERROR] /api/requesters/active error:", error);
+    res.status(500).json({ error: "Unable to load active requesters." });
+  }
+});
+
 
 export default app;
