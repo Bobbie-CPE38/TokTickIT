@@ -5,9 +5,24 @@ export interface Category {
   name: string;
 }
 
+export interface DevelopmentRequester {
+  id: number;
+  name: string;
+  email: string;
+  department: string;
+}
+
 export interface SystemStatus {
   online: boolean;
   categories: Category[];
+}
+
+export async function fetchActiveRequesters(): Promise<DevelopmentRequester[]> {
+  const res = await fetch(`${API_URL}/api/requesters/active`);
+  if (!res.ok) {
+    throw new Error(`Failed to load active requesters with status ${res.status}`);
+  }
+  return res.json();
 }
 
 // Issue 2 + Issue 4 — call the backend.
@@ -16,7 +31,6 @@ export interface SystemStatus {
 //        return { online: true, categories }.
 // Throwing on failure lets the UI show a single Offline/error state.
 export async function checkSystem(): Promise<SystemStatus> {
-  // TODO(Issue 2 & 4): implement the two fetch calls described above.
   const healthRes = await fetch(`${API_URL}/api/health`);
   if (!healthRes.ok) {
     throw new Error(`Health check failed with status ${healthRes.status}`);
@@ -29,9 +43,9 @@ export async function checkSystem(): Promise<SystemStatus> {
 
   const categories = await categoriesRes.json();
 
-  // Categories fetch will be added in Issue 4
   return {
     online: true,
     categories: categories,
   };
 }
+
