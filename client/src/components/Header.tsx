@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRequester } from "../context/RequesterContext.js";
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  currentView?: "portal" | "create-ticket" | "my-tickets";
+  onNavigate?: (view: "portal" | "create-ticket" | "my-tickets") => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNavigate }) => {
   const { currentRequester, openSelector } = useRequester();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -28,6 +33,10 @@ export const Header: React.FC = () => {
             href="/"
             className="navbar-brand d-flex align-items-center gap-2 text-white fw-bold m-0 p-0 text-decoration-none"
             style={{ fontSize: "1.25rem", letterSpacing: "-0.02em" }}
+            onClick={(e) => {
+              e.preventDefault();
+              onNavigate?.("portal");
+            }}
           >
             {/* Clock & Checkmark Logo Icon */}
             <svg
@@ -51,8 +60,17 @@ export const Header: React.FC = () => {
           <nav className="d-flex align-items-center gap-3">
             <button
               type="button"
-              className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-1.5 px-2 py-1 small fw-medium opacity-90 hover-opacity-100"
-              style={{ fontSize: "0.9rem" }}
+              className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-1.5 px-2 py-1 small fw-medium"
+              style={{
+                fontSize: "0.9rem",
+                opacity: currentView === "portal" || currentView === "my-tickets" ? 1 : 0.85,
+                borderBottom:
+                  currentView === "portal" || currentView === "my-tickets"
+                    ? "2px solid #FFFFFF"
+                    : "2px solid transparent",
+                borderRadius: 0,
+              }}
+              onClick={() => onNavigate?.("portal")}
             >
               <svg
                 width="16"
@@ -75,8 +93,14 @@ export const Header: React.FC = () => {
 
             <button
               type="button"
-              className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-1.5 px-2 py-1 small fw-medium opacity-90 hover-opacity-100"
-              style={{ fontSize: "0.9rem" }}
+              className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-1.5 px-2 py-1 small fw-medium"
+              style={{
+                fontSize: "0.9rem",
+                opacity: currentView === "create-ticket" ? 1 : 0.85,
+                borderBottom: currentView === "create-ticket" ? "2px solid #FFFFFF" : "2px solid transparent",
+                borderRadius: 0,
+              }}
+              onClick={() => onNavigate?.("create-ticket")}
             >
               <svg
                 width="16"
