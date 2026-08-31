@@ -1,82 +1,114 @@
-import { useState, useEffect, useCallback } from "react";
-import { checkSystem, Category } from "./api.js";
+import React, { useState, useEffect, useCallback } from "react";
 import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
 import { Header } from "./components/Header.js";
 import { RequesterSelectorModal } from "./components/RequesterSelectorModal.js";
 import { CreateTicket } from "./components/CreateTicket.js";
 import { MyTickets } from "./components/MyTickets.js";
+import { checkSystem, Category } from "./api.js";
 
-type UiState = "idle" | "loading" | "success" | "error";
 export type AppView = "portal" | "create-ticket" | "my-tickets";
 
 function getInitialView(): AppView {
   if (typeof window !== "undefined") {
-    const path = window.location.pathname;
-    if (path.startsWith("/tickets/new")) {
+    const pathname = window.location.pathname;
+    if (pathname === "/tickets/new") {
       return "create-ticket";
-    }
-    if (path.startsWith("/tickets")) {
-      return "my-tickets";
     }
   }
   return "my-tickets";
 }
 
 function SystemHealthSection() {
-  const [state, setState] = useState<UiState>("idle");
+  const [status, setStatus] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  async function handleCheck() {
-    setState("loading");
-    setErrorMessage("");
+  const handleCheck = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const result = await checkSystem();
+      setStatus(result.online ? "Online" : "Offline");
       setCategories(result.categories);
-      setState("success");
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Backend is unavailable.");
-      setState("error");
+      setStatus("Offline");
+      setError(err instanceof Error ? err.message : "Backend is unavailable.");
+      setCategories([]);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="container pb-5" style={{ maxWidth: "1200px" }}>
-      <div className="card shadow-sm border p-3 bg-white" style={{ borderColor: "#E2E8F0", borderRadius: "8px" }}>
-        <div className="d-flex justify-content-between align-items-center mb-2">
-          <span className="small text-muted fw-medium">System Health & Catalog Status</span>
+    <div className="container py-4">
+      <div
+        className="card border-0 shadow-sm p-4"
+        style={{
+          backgroundColor: "#FFFFFF",
+          borderRadius: "8px",
+          border: "1px solid #E2E8F0",
+        }}
+      >
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div className="d-flex align-items-center gap-2">
+            <span
+              className="rounded-circle"
+              style={{
+                width: "10px",
+                height: "10px",
+                backgroundColor:
+                  status === "Online"
+                    ? "#006B3C"
+                    : status === "Offline"
+                    ? "#DC2626"
+                    : "#D97706",
+                display: "inline-block",
+              }}
+            />
+            <h2 className="h6 fw-bold mb-0 text-uppercase tracking-wide" style={{ color: "#1C2D27" }}>
+              System Catalog &amp; Health (Lab 1)
+            </h2>
+          </div>
           <button
             type="button"
-            className="btn btn-sm px-3"
-            style={{ backgroundColor: "#006B3C", color: "#FFFFFF" }}
+            className="btn btn-sm btn-outline-success"
+            style={{ borderColor: "#006B3C", color: "#006B3C" }}
             onClick={handleCheck}
-            disabled={state === "loading"}
+            disabled={loading}
           >
-            {state === "loading" ? "Loading…" : "Check System"}
+            {loading ? "Checking..." : "Check System"}
           </button>
         </div>
 
-        {state === "success" && (
-          <div
-            className="alert alert-success mt-2 mb-0"
-            style={{ backgroundColor: "#EAF6EF", borderColor: "#A7F3D0", color: "#065F46" }}
-          >
-            <div className="fw-bold">Status: Online</div>
-            <ul className="mb-0 mt-1">
-              {categories.map((cat) => (
-                <li key={cat.id}>{cat.name}</li>
-              ))}
-            </ul>
+        {status && (
+          <div className="mb-3">
+            <span className={`badge ${status === "Online" ? "bg-success" : "bg-danger"}`}>
+              Status: {status}
+            </span>
           </div>
         )}
 
-        {state === "error" && (
-          <div
-            className="alert alert-danger mt-2 mb-0"
-            style={{ backgroundColor: "#FEE2E2", borderColor: "#EF4444", color: "#991B1B" }}
-          >
-            <div className="fw-bold mb-1">Status: Offline</div>
-            <div>{errorMessage || "Backend is unavailable."}</div>
+        {categories.length > 0 && (
+          <div>
+            <span className="text-muted small d-block mb-2">Supported Categories:</span>
+            <div className="d-flex flex-wrap gap-2">
+              {categories.map((c) => (
+                <span
+                  key={c.id}
+                  className="badge px-3 py-2 fw-medium"
+                  style={{ backgroundColor: "#EAF6EF", color: "#006B3C", border: "1px solid #C2E2D3" }}
+                >
+                  {c.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="alert alert-danger mt-3 mb-0 py-2 small" role="alert">
+            {error}
           </div>
         )}
       </div>
@@ -90,9 +122,9 @@ interface AppBodyProps {
 }
 
 function AppBody({ currentView, navigateTo }: AppBodyProps) {
-  const { currentRequester, isSelectorOpen, error } = useRequester();
+  const { currentRequester, isSelectorOpen } = useRequester();
 
-  if (!currentRequester || isSelectorOpen || Boolean(error)) {
+  if (!currentRequester || isSelectorOpen) {
     return <RequesterSelectorModal />;
   }
 
@@ -114,19 +146,26 @@ function AppBody({ currentView, navigateTo }: AppBodyProps) {
   );
 }
 
-export default function App() {
+function AppContent() {
   const [currentView, setCurrentView] = useState<AppView>(getInitialView);
+  const { currentRequester, closeSelector } = useRequester();
 
-  const navigateTo = useCallback((view: AppView) => {
-    setCurrentView(view);
-    if (typeof window !== "undefined") {
-      const targetPath =
-        view === "create-ticket" ? "/tickets/new" : view === "my-tickets" ? "/tickets" : "/";
-      if (window.location.pathname !== targetPath) {
-        window.history.pushState({}, "", targetPath);
+  const navigateTo = useCallback(
+    (view: AppView) => {
+      setCurrentView(view);
+      if (currentRequester) {
+        closeSelector();
       }
-    }
-  }, []);
+      if (typeof window !== "undefined") {
+        const targetPath =
+          view === "create-ticket" ? "/tickets/new" : view === "my-tickets" ? "/tickets" : "/";
+        if (window.location.pathname !== targetPath) {
+          window.history.pushState({}, "", targetPath);
+        }
+      }
+    },
+    [currentRequester, closeSelector]
+  );
 
   useEffect(() => {
     function handlePopState() {
@@ -139,13 +178,19 @@ export default function App() {
   }, []);
 
   return (
+    <div style={{ minHeight: "100vh", backgroundColor: "#F5F7F6" }}>
+      <Header currentView={currentView} onNavigate={navigateTo} />
+      <main>
+        <AppBody currentView={currentView} navigateTo={navigateTo} />
+      </main>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
     <RequesterProvider>
-      <div style={{ minHeight: "100vh", backgroundColor: "#F5F7F6" }}>
-        <Header currentView={currentView} onNavigate={navigateTo} />
-        <main>
-          <AppBody currentView={currentView} navigateTo={navigateTo} />
-        </main>
-      </div>
+      <AppContent />
     </RequesterProvider>
   );
 }

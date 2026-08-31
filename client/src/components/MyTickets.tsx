@@ -479,11 +479,18 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
 
       {/* Loading Skeleton */}
       {loading && !error && (
-        <div className="card shadow-sm border mb-4 p-4 text-center" style={{ backgroundColor: "#FFFFFF" }}>
-          <div className="spinner-border text-success my-4" role="status" style={{ color: "#006B3C" }}>
+        <div
+          className="card shadow-sm border mb-4 py-5 d-flex flex-column align-items-center justify-content-center text-center"
+          style={{ backgroundColor: "#FFFFFF", borderColor: "#E2E8F0", borderRadius: "8px" }}
+        >
+          <div
+            className="spinner-border mb-3"
+            role="status"
+            style={{ color: "#006B3C", width: "2.5rem", height: "2.5rem" }}
+          >
             <span className="visually-hidden">Loading tickets…</span>
           </div>
-          <p className="text-muted small">Loading your tickets…</p>
+          <p className="text-muted small m-0">Loading your tickets…</p>
         </div>
       )}
 
