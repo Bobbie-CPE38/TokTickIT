@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRequester } from "../context/RequesterContext.js";
 import {
   Category,
@@ -28,6 +28,7 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
   const [categories, setCategories] = useState<Category[]>([]);
   const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
   const [loadingMetadata, setLoadingMetadata] = useState<boolean>(true);
+  const [metadataError, setMetadataError] = useState<string | null>(null);
 
   // Form State
   const [categoryId, setCategoryId] = useState<string>("");
@@ -42,31 +43,29 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
   const [apiError, setApiError] = useState<string | null>(null);
   const [createdTicket, setCreatedTicket] = useState<Ticket | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    async function loadMetadata() {
-      try {
-        const [cats, systems] = await Promise.all([
-          fetchCategories(),
-          fetchRelatedSystems(),
-        ]);
-        if (mounted) {
-          setCategories(cats);
-          setRelatedSystems(systems);
-        }
-      } catch (err) {
-        console.error("Failed to load ticket metadata:", err);
-      } finally {
-        if (mounted) {
-          setLoadingMetadata(false);
-        }
-      }
+  const loadMetadata = useCallback(async () => {
+    setLoadingMetadata(true);
+    setMetadataError(null);
+    try {
+      const [cats, systems] = await Promise.all([
+        fetchCategories(),
+        fetchRelatedSystems(),
+      ]);
+      setCategories(cats);
+      setRelatedSystems(systems);
+    } catch (err) {
+      console.error("Failed to load ticket metadata:", err);
+      setMetadataError(
+        err instanceof Error ? err.message : "Unable to load categories and related systems."
+      );
+    } finally {
+      setLoadingMetadata(false);
     }
-    loadMetadata();
-    return () => {
-      mounted = false;
-    };
   }, []);
+
+  useEffect(() => {
+    loadMetadata();
+  }, [loadMetadata]);
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
@@ -129,109 +128,230 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
         onSuccess(ticket);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to create ticket";
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
       setApiError(msg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleResetForm = () => {
+    setCategoryId("");
+    setRelatedSystemId("");
+    setRequestedPriority("MEDIUM");
+    setSummary("");
+    setDescription("");
+    setErrors({});
+    setApiError(null);
+    setCreatedTicket(null);
+  };
+
   const formattedDate = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-    hour: "numeric",
-    minute: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
     hour12: true,
   }).format(new Date());
 
+  // Priority Pill options
+  const priorities: Priority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+
+  // Priority styling helpers
+  const getPriorityStyle = (p: Priority, isSelected: boolean) => {
+    if (!isSelected) {
+      return {
+        backgroundColor: "#F8FAFC",
+        borderColor: "#E2E8F0",
+        color: "#64748B",
+      };
+    }
+    switch (p) {
+      case "URGENT":
+        return { backgroundColor: "#FEE2E2", borderColor: "#EF4444", color: "#991B1B" };
+      case "HIGH":
+        return { backgroundColor: "#FFEDD5", borderColor: "#F97316", color: "#9A3412" };
+      case "MEDIUM":
+        return { backgroundColor: "#FEF3C7", borderColor: "#F59E0B", color: "#92400E" };
+      case "LOW":
+        return { backgroundColor: "#D1FAE5", borderColor: "#10B981", color: "#065F46" };
+      default:
+        return { backgroundColor: "#EAF6EF", borderColor: "#006B3C", color: "#006B3C" };
+    }
+  };
+
+  // If ticket was successfully created, show confirmation view
   if (createdTicket) {
     return (
-      <div className="container py-4" style={{ maxWidth: 840 }}>
-        <div className="card shadow-sm border-0" style={{ backgroundColor: "#FFFFFF", borderRadius: "8px" }}>
-          <div className="card-body p-5 text-center">
+      <div className="container py-4" style={{ maxWidth: "800px" }}>
+        <div
+          className="card shadow-sm border-0 p-4 p-md-5 text-center"
+          style={{ backgroundColor: "#FFFFFF", borderRadius: "8px" }}
+        >
+          <div className="mb-4">
             <div
-              className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-              style={{ width: "64px", height: "64px", backgroundColor: "#D1FAE5", color: "#065F46" }}
+              className="rounded-circle d-inline-flex align-items-center justify-content-center"
+              style={{
+                width: "72px",
+                height: "72px",
+                backgroundColor: "#D1FAE5",
+                color: "#006B3C",
+              }}
             >
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <h2 className="h4 fw-bold mb-2" style={{ color: "#1C2D27" }}>
-              Ticket Created Successfully
-            </h2>
-            <p className="text-muted mb-4">
-              Your support ticket has been submitted to the IT service desk.
-            </p>
-            <div
-              className="p-3 rounded mb-4 d-inline-block text-start"
-              style={{ backgroundColor: "#EAF6EF", border: "1px solid #A7F3D0", minWidth: "300px" }}
-            >
-              <div className="small text-muted mb-1">Official Ticket Number:</div>
-              <div className="h5 fw-bold mb-0" style={{ color: "#006B3C" }}>
-                {createdTicket.ticketNumber}
+          </div>
+
+          <h2 className="h4 fw-bold mb-2" style={{ color: "#1C2D27" }}>
+            Ticket Created Successfully
+          </h2>
+          <p className="text-muted mb-4">
+            Your IT support request has been submitted and assigned a ticket number.
+          </p>
+
+          <div
+            className="p-4 rounded mb-4 text-start border"
+            style={{ backgroundColor: "#F3F6F4", borderColor: "#E2E8F0" }}
+          >
+            <div className="row g-3">
+              <div className="col-12 col-sm-6">
+                <span className="text-muted small d-block">Ticket Number</span>
+                <span className="fw-bold fs-5" style={{ color: "#006B3C" }}>
+                  {createdTicket.ticketNumber}
+                </span>
+              </div>
+              <div className="col-12 col-sm-6">
+                <span className="text-muted small d-block">Status</span>
+                <span
+                  className="badge px-2.5 py-1.5 fw-semibold"
+                  style={{ backgroundColor: "#DBEAFE", color: "#1E40AF" }}
+                >
+                  {createdTicket.currentStatus}
+                </span>
+              </div>
+              <div className="col-12 col-sm-6">
+                <span className="text-muted small d-block">Category</span>
+                <span className="fw-medium" style={{ color: "#1C2D27" }}>
+                  {createdTicket.category?.name || "Hardware"}
+                </span>
+              </div>
+              <div className="col-12 col-sm-6">
+                <span className="text-muted small d-block">Related System</span>
+                <span className="fw-medium" style={{ color: "#1C2D27" }}>
+                  {createdTicket.relatedSystem?.name || "Corporate Laptop"}
+                </span>
+              </div>
+              <div className="col-12">
+                <span className="text-muted small d-block">Summary</span>
+                <span className="fw-medium" style={{ color: "#1C2D27" }}>
+                  {createdTicket.summary}
+                </span>
               </div>
             </div>
-            <div className="d-flex justify-content-center gap-3">
-              {onCancel && (
-                <button
-                  type="button"
-                  className="btn px-4 fw-medium"
-                  style={{ borderColor: "#006B3C", color: "#006B3C" }}
-                  onClick={onCancel}
-                >
-                  Back to My Tickets
-                </button>
-              )}
-              <button
-                type="button"
-                className="btn px-4 fw-medium text-white"
-                style={{ backgroundColor: "#006B3C" }}
-                onClick={() => {
-                  setCreatedTicket(null);
-                  setSummary("");
-                  setDescription("");
-                  setCategoryId("");
-                  setRelatedSystemId("");
-                  setRequestedPriority("MEDIUM");
-                  setErrors({});
-                  setApiError(null);
-                }}
-              >
-                Create Another Ticket
-              </button>
-            </div>
+          </div>
+
+          <div className="d-flex flex-column flex-sm-row justify-content-center gap-3">
+            <button
+              type="button"
+              className="btn btn-outline-secondary px-4 py-2"
+              onClick={onCancel}
+            >
+              Back to My Tickets
+            </button>
+            <button
+              type="button"
+              className="btn text-white px-4 py-2 fw-medium"
+              style={{ backgroundColor: "#006B3C" }}
+              onClick={handleResetForm}
+            >
+              + Create Another Ticket
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="container py-4" style={{ maxWidth: 900 }}>
-      {/* Breadcrumb */}
-      <div className="text-muted small mb-2">
-        <span>My Tickets</span> &gt; <span className="fw-medium" style={{ color: "#1C2D27" }}>Create Ticket</span>
-      </div>
+  const isMetadataDisabled = loadingMetadata || Boolean(metadataError) || categories.length === 0;
 
-      {/* Heading */}
+  return (
+    <div className="container py-4" style={{ maxWidth: "840px" }}>
+      {/* Header */}
       <div className="mb-4">
-        <h1 className="h3 fw-bold mb-1" style={{ color: "#1C2D27" }}>
+        <h1 className="h3 fw-bold mb-1" style={{ color: "#1C2D27", letterSpacing: "-0.01em" }}>
           Create New IT Support Ticket
         </h1>
-        <p className="text-muted mb-0">
-          Describe your issue and attach supporting evidence for the IT team.
+        <p className="text-muted mb-0" style={{ fontSize: "0.95rem" }}>
+          Submit a new request for IT assistance, hardware repairs, or account provisioning.
         </p>
       </div>
 
-      {/* Persistent Error Banner */}
+      {/* Backend Metadata Offline Error Alert */}
+      {metadataError && (
+        <div
+          className="alert alert-danger d-flex align-items-center justify-content-between mb-4 shadow-sm"
+          style={{ backgroundColor: "#FEE2E2", borderColor: "#EF4444", color: "#991B1B" }}
+          role="alert"
+        >
+          <div className="d-flex align-items-center gap-2">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>
+              <strong>System Offline:</strong> Unable to load categories and related systems ({metadataError}).
+            </span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-danger fw-semibold px-3"
+            onClick={loadMetadata}
+            disabled={loadingMetadata}
+          >
+            {loadingMetadata ? "Retrying..." : "Retry"}
+          </button>
+        </div>
+      )}
+
+      {/* API Submission Error Banner (Persistent) */}
       {apiError && (
         <div
           className="alert alert-danger d-flex align-items-center gap-2 mb-4 shadow-sm"
           style={{ backgroundColor: "#FEE2E2", borderColor: "#EF4444", color: "#991B1B" }}
+          role="alert"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -282,9 +402,15 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
                   }}
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
-                  disabled={loadingMetadata || isSubmitting}
+                  disabled={isMetadataDisabled || isSubmitting}
                 >
-                  <option value="">Select Category</option>
+                  <option value="">
+                    {loadingMetadata
+                      ? "Loading categories…"
+                      : isMetadataDisabled
+                      ? "Unavailable (System Offline)"
+                      : "Select Category"}
+                  </option>
                   {categories.map((cat) => (
                     <option key={cat.id} value={cat.id.toString()}>
                       {cat.name}
@@ -311,9 +437,15 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
                   }}
                   value={relatedSystemId}
                   onChange={(e) => setRelatedSystemId(e.target.value)}
-                  disabled={loadingMetadata || isSubmitting}
+                  disabled={isMetadataDisabled || isSubmitting}
                 >
-                  <option value="">Select Related System</option>
+                  <option value="">
+                    {loadingMetadata
+                      ? "Loading systems…"
+                      : isMetadataDisabled
+                      ? "Unavailable (System Offline)"
+                      : "Select Related System"}
+                  </option>
                   {relatedSystems.map((sys) => (
                     <option key={sys.id} value={sys.id.toString()}>
                       {sys.name}
@@ -328,69 +460,70 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
               </div>
             </div>
 
-            {/* Requested Priority */}
-            <div className="mb-3">
-              <label className="form-label fw-medium d-block" style={{ color: "#1C2D27" }}>
-                Requested Priority <span className="text-danger">*</span>
+            {/* Requested Priority Pill Selector */}
+            <div className="mb-4">
+              <label className="form-label fw-medium d-block mb-2" style={{ color: "#1C2D27" }}>
+                Requested Priority
               </label>
               <div className="d-flex flex-wrap gap-2">
-                {(
-                  [
-                    { value: "LOW", label: "Low", bg: "#D1FAE5", text: "#059669", border: "#A7F3D0" },
-                    { value: "MEDIUM", label: "Medium", bg: "#FEF3C7", text: "#D97706", border: "#FDE68A" },
-                    { value: "HIGH", label: "High", bg: "#FEE2E2", text: "#DC2626", border: "#FCA5A5" },
-                    { value: "URGENT", label: "Urgent", bg: "#FCA5A5", text: "#991B1B", border: "#F87171" },
-                  ] as const
-                ).map((p) => {
-                  const isChecked = requestedPriority === p.value;
+                {priorities.map((p) => {
+                  const isSelected = requestedPriority === p;
+                  const style = getPriorityStyle(p, isSelected);
                   return (
                     <label
-                      key={p.value}
-                      className="btn d-flex align-items-center gap-2 px-3 py-2 border rounded"
+                      key={p}
+                      className="btn btn-sm px-3 py-1.5 fw-semibold text-capitalize rounded-pill border"
                       style={{
-                        backgroundColor: isChecked ? p.bg : "#FFFFFF",
-                        color: isChecked ? p.text : "#1C2D27",
-                        borderColor: isChecked ? p.border : "#D1D5DB",
-                        cursor: "pointer",
-                        fontWeight: isChecked ? 600 : 400,
+                        ...style,
+                        cursor: isSubmitting ? "not-allowed" : "pointer",
+                        transition: "all 0.15s ease",
                       }}
                     >
                       <input
                         type="radio"
                         name="requestedPriority"
-                        value={p.value}
-                        checked={isChecked}
-                        onChange={() => setRequestedPriority(p.value)}
-                        className="form-check-input m-0"
+                        value={p}
+                        checked={isSelected}
+                        onChange={() => setRequestedPriority(p)}
+                        className="visually-hidden"
                         disabled={isSubmitting}
+                        aria-label={p}
                       />
-                      <span>{p.label}</span>
+                      {p.toLowerCase()}
                     </label>
                   );
                 })}
               </div>
+              <div className="text-muted small mt-1">
+                Requested priority may be adjusted by IT staff based on business impact.
+              </div>
             </div>
 
-            {/* Summary */}
+            {/* Summary Input */}
             <div className="mb-3">
               <div className="d-flex justify-content-between align-items-center mb-1">
-                <label htmlFor="summary" className="form-label fw-medium m-0" style={{ color: "#1C2D27" }}>
-                  Summary <span className="text-danger">*</span> (5–150 characters)
+                <label htmlFor="summary" className="form-label fw-medium mb-0" style={{ color: "#1C2D27" }}>
+                  Summary <span className="text-danger">*</span>
                 </label>
-                <span className="small text-muted">{summary.length}/150 characters</span>
+                <span
+                  className="small"
+                  style={{ color: summary.length > 150 ? "#DC2626" : "#64748B" }}
+                >
+                  {summary.length} / 150
+                </span>
               </div>
               <input
-                type="text"
                 id="summary"
+                type="text"
                 className={`form-control ${errors.summary ? "is-invalid" : ""}`}
                 style={{
                   borderColor: errors.summary ? "#EF4444" : "#D1D5DB",
                   boxShadow: errors.summary ? "0 0 0 3px rgba(239, 68, 68, 0.15)" : undefined,
                 }}
-                maxLength={150}
-                placeholder="Brief summary of the issue..."
+                placeholder="Brief summary of the issue (5–150 characters)"
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
+                maxLength={150}
                 disabled={isSubmitting}
               />
               {errors.summary && (
@@ -400,27 +533,31 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
               )}
             </div>
 
-            {/* Description */}
+            {/* Description Textarea */}
             <div className="mb-4">
               <div className="d-flex justify-content-between align-items-center mb-1">
-                <label htmlFor="description" className="form-label fw-medium m-0" style={{ color: "#1C2D27" }}>
-                  Description <span className="text-danger">*</span> (10–2000 characters)
+                <label htmlFor="description" className="form-label fw-medium mb-0" style={{ color: "#1C2D27" }}>
+                  Description <span className="text-danger">*</span>
                 </label>
-                <span className="small text-muted">{description.length}/2000 characters</span>
+                <span
+                  className="small"
+                  style={{ color: description.length > 2000 ? "#DC2626" : "#64748B" }}
+                >
+                  {description.length} / 2000
+                </span>
               </div>
               <textarea
                 id="description"
-                rows={4}
+                rows={5}
                 className={`form-control ${errors.description ? "is-invalid" : ""}`}
                 style={{
                   borderColor: errors.description ? "#EF4444" : "#D1D5DB",
                   boxShadow: errors.description ? "0 0 0 3px rgba(239, 68, 68, 0.15)" : undefined,
-                  minHeight: "120px",
                 }}
-                maxLength={2000}
-                placeholder="Detailed description of what happened, error messages, and reproduction steps..."
+                placeholder="Detailed description of the issue or request (10–2000 characters)"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                maxLength={2000}
                 disabled={isSubmitting}
               />
               {errors.description && (
@@ -464,10 +601,10 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
                 type="submit"
                 className="btn fw-medium px-4 text-white d-flex align-items-center gap-2"
                 style={{
-                  backgroundColor: "#006B3C",
-                  cursor: isSubmitting ? "not-allowed" : "pointer",
+                  backgroundColor: isMetadataDisabled ? "#9CA3AF" : "#006B3C",
+                  cursor: isSubmitting || isMetadataDisabled ? "not-allowed" : "pointer",
                 }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isMetadataDisabled}
               >
                 {isSubmitting ? (
                   <>
@@ -479,13 +616,7 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
                     <span>Submitting…</span>
                   </>
                 ) : (
-                  <>
-                    <span>Submit Ticket</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </>
+                  <span>Submit Ticket</span>
                 )}
               </button>
             </div>
@@ -495,4 +626,3 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
     </div>
   );
 };
-export default CreateTicket;

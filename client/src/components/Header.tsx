@@ -35,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
             style={{ fontSize: "1.25rem", letterSpacing: "-0.02em" }}
             onClick={(e) => {
               e.preventDefault();
-              onNavigate?.("portal");
+              onNavigate?.("my-tickets");
             }}
           >
             {/* Clock & Checkmark Logo Icon */}
@@ -70,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
                     : "2px solid transparent",
                 borderRadius: 0,
               }}
-              onClick={() => onNavigate?.("portal")}
+              onClick={() => onNavigate?.("my-tickets")}
             >
               <svg
                 width="16"
@@ -131,20 +131,27 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
             aria-expanded={dropdownOpen}
             aria-label="Profile"
           >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+              style={{
+                width: "28px",
+                height: "28px",
+                backgroundColor: "rgba(0, 0, 0, 0.25)",
+                fontSize: "0.85rem",
+              }}
             >
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            <span className="fw-medium small">Profile</span>
+              {currentRequester ? currentRequester.name.charAt(0) : "P"}
+            </div>
+            <div className="d-flex align-items-baseline gap-2 d-none d-sm-flex">
+              <span className="fw-semibold small text-white">
+                {currentRequester ? currentRequester.name : "Profile"}
+              </span>
+              {currentRequester && (
+                <span className="text-white-50" style={{ fontSize: "0.8rem" }}>
+                  {currentRequester.department}
+                </span>
+              )}
+            </div>
             <svg
               width="14"
               height="14"
@@ -154,6 +161,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="flex-shrink-0"
             >
               <polyline points="6 9 12 15 18 9" />
             </svg>

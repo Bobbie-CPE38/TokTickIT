@@ -92,12 +92,12 @@ describe("Lab 2 Create Ticket UI Tests (UI-01, UI-02, UI-03, UI-04)", () => {
     render(<App />);
 
     // Navigate to Create Ticket view
-    const createNavBtn = await screen.findByRole("button", { name: /Create Ticket/i });
+    const createNavBtn = (await screen.findAllByRole("button", { name: /Create Ticket/i }))[0];
     fireEvent.click(createNavBtn);
 
     // Form headers and controls should be displayed
     expect(await screen.findByText(/Create New IT Support Ticket/i)).toBeInTheDocument();
-    expect(screen.getByText(/Jennifer Anderson/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Jennifer Anderson/i).length).toBeGreaterThanOrEqual(1);
 
     // Fill Category
     const categorySelect = screen.getByLabelText(/Category/i) as HTMLSelectElement;
@@ -162,7 +162,7 @@ describe("Lab 2 Create Ticket UI Tests (UI-01, UI-02, UI-03, UI-04)", () => {
 
     render(<App />);
 
-    const createNavBtn = await screen.findByRole("button", { name: /Create Ticket/i });
+    const createNavBtn = (await screen.findAllByRole("button", { name: /Create Ticket/i }))[0];
     fireEvent.click(createNavBtn);
 
     expect(await screen.findByText(/Create New IT Support Ticket/i)).toBeInTheDocument();
@@ -206,7 +206,7 @@ describe("Lab 2 Create Ticket UI Tests (UI-01, UI-02, UI-03, UI-04)", () => {
 
     render(<App />);
 
-    const createNavBtn = await screen.findByRole("button", { name: /Create Ticket/i });
+    const createNavBtn = (await screen.findAllByRole("button", { name: /Create Ticket/i }))[0];
     fireEvent.click(createNavBtn);
 
     expect(await screen.findByText(/Create New IT Support Ticket/i)).toBeInTheDocument();
