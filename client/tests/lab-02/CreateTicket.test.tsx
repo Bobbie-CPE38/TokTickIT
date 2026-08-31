@@ -97,7 +97,7 @@ describe("Lab 2 Create Ticket UI Tests (UI-01, UI-02, UI-03, UI-04)", () => {
 
     // Form headers and controls should be displayed
     expect(await screen.findByText(/Create New IT Support Ticket/i)).toBeInTheDocument();
-    expect(screen.getByText(/Jennifer Anderson/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Jennifer Anderson/i).length).toBeGreaterThanOrEqual(1);
 
     // Fill Category
     const categorySelect = screen.getByLabelText(/Category/i) as HTMLSelectElement;

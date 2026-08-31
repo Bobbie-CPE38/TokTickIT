@@ -215,4 +215,213 @@ app.post("/api/tickets", async (req: Request, res: Response) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Lab 2 — List Requester Tickets (Search, Filter, Sort, Paginate)
+// GET /api/tickets
+// ---------------------------------------------------------------------------
+app.get("/api/tickets", async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const requesterIdHeader = req.headers["x-requester-id"];
+
+    if (!requesterIdHeader) {
+      return res.status(401).json({ error: "Unauthorized: Missing X-Requester-Id header." });
+    }
+
+    const requesterId = parseInt(String(requesterIdHeader), 10);
+    if (isNaN(requesterId)) {
+      return res.status(401).json({ error: "Unauthorized: Invalid X-Requester-Id header." });
+    }
+
+    // Verify requester exists and is active
+    const requester = await prisma.developmentRequester.findUnique({
+      where: { id: requesterId },
+    });
+
+    if (!requester || !requester.isActive) {
+      return res.status(403).json({ error: "Forbidden: Requester is inactive or does not exist." });
+    }
+
+    // Query parameters validation
+    const queryDetails: string[] = [];
+
+    let page = 1;
+    if (req.query.page !== undefined) {
+      page = parseInt(String(req.query.page), 10);
+      if (isNaN(page) || page < 1) {
+        queryDetails.push("page must be an integer greater than or equal to 1.");
+      }
+    }
+
+    let pageSize = 10;
+    if (req.query.pageSize !== undefined) {
+      pageSize = parseInt(String(req.query.pageSize), 10);
+      if (isNaN(pageSize) || pageSize < 1 || pageSize > 50) {
+        queryDetails.push("pageSize must be an integer between 1 and 50.");
+      }
+    }
+
+    let categoryId: number | undefined;
+    if (req.query.categoryId !== undefined && req.query.categoryId !== "") {
+      categoryId = parseInt(String(req.query.categoryId), 10);
+      if (isNaN(categoryId)) {
+        queryDetails.push("categoryId must be a valid integer.");
+      }
+    }
+
+    const allowedPriorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+    let requestedPriority: any = undefined;
+    if (req.query.requestedPriority !== undefined && req.query.requestedPriority !== "") {
+      const rp = String(req.query.requestedPriority);
+      if (!allowedPriorities.includes(rp)) {
+        queryDetails.push("requestedPriority must be one of: LOW, MEDIUM, HIGH, URGENT.");
+      } else {
+        requestedPriority = rp;
+      }
+    }
+
+    let itPriority: any = undefined;
+    if (req.query.itPriority !== undefined && req.query.itPriority !== "") {
+      const ip = String(req.query.itPriority);
+      if (!allowedPriorities.includes(ip)) {
+        queryDetails.push("itPriority must be one of: LOW, MEDIUM, HIGH, URGENT.");
+      } else {
+        itPriority = ip;
+      }
+    }
+
+    const allowedStatuses = ["NEW", "OPEN", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"];
+    let status: any = undefined;
+    if (req.query.status !== undefined && req.query.status !== "") {
+      const st = String(req.query.status);
+      if (!allowedStatuses.includes(st)) {
+        queryDetails.push("status must be one of: NEW, OPEN, IN_PROGRESS, PENDING, RESOLVED, CLOSED.");
+      } else {
+        status = st;
+      }
+    }
+
+    const allowedSortBy = ["createdAt", "updatedAt", "ticketNumber", "requestedPriority"];
+    let sortBy = "createdAt";
+    if (req.query.sortBy !== undefined && req.query.sortBy !== "") {
+      const sb = String(req.query.sortBy);
+      if (!allowedSortBy.includes(sb)) {
+        queryDetails.push("sortBy must be one of: createdAt, updatedAt, ticketNumber, requestedPriority.");
+      } else {
+        sortBy = sb;
+      }
+    }
+
+    let sortOrder: "asc" | "desc" = "desc";
+    if (req.query.sortOrder !== undefined && req.query.sortOrder !== "") {
+      const so = String(req.query.sortOrder).toLowerCase();
+      if (so !== "asc" && so !== "desc") {
+        queryDetails.push("sortOrder must be 'asc' or 'desc'.");
+      } else {
+        sortOrder = so;
+      }
+    }
+
+    if (queryDetails.length > 0) {
+      return res.status(400).json({
+        error: "Invalid query parameters.",
+        details: queryDetails,
+      });
+    }
+
+    // Build Prisma query filter
+    const where: any = {
+      requesterId: requester.id,
+    };
+
+    if (categoryId !== undefined) {
+      where.categoryId = categoryId;
+    }
+
+    if (requestedPriority !== undefined) {
+      where.requestedPriority = requestedPriority;
+    }
+
+    if (itPriority !== undefined) {
+      where.itPriority = itPriority;
+    }
+
+    if (status !== undefined) {
+      where.currentStatus = status;
+    }
+
+    const search = req.query.search ? String(req.query.search).trim() : "";
+    if (search) {
+      where.OR = [
+        {
+          ticketNumber: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+        {
+          summary: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      ];
+    }
+
+    const total = await prisma.ticket.count({ where });
+    const totalPages = Math.ceil(total / pageSize);
+
+    const tickets = await prisma.ticket.findMany({
+      where,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        category: { select: { id: true, name: true } },
+        relatedSystem: { select: { id: true, name: true } },
+        _count: {
+          select: {
+            attachments: {
+              where: { isRemoved: false },
+            },
+          },
+        },
+      },
+    });
+
+    const data = tickets.map((t) => ({
+      id: t.id,
+      ticketNumber: t.ticketNumber,
+      summary: t.summary,
+      requestedPriority: t.requestedPriority,
+      itPriority: t.itPriority,
+      currentStatus: t.currentStatus,
+      ticketOwner: t.ticketOwner,
+      categoryId: t.categoryId,
+      categoryName: t.category.name,
+      relatedSystemId: t.relatedSystemId,
+      relatedSystemName: t.relatedSystem.name,
+      attachmentCount: t._count.attachments,
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
+    }));
+
+    res.status(200).json({
+      data,
+      pagination: {
+        total,
+        page,
+        pageSize,
+        totalPages,
+      },
+    });
+  } catch (error) {
+    console.error("[API ERROR] /api/tickets list error:", error);
+    res.status(500).json({ error: "Unable to load tickets." });
+  }
+});
+
 export default app;
+

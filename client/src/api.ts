@@ -107,11 +107,6 @@ export async function createTicket(
   return res.json();
 }
 
-// Issue 2 + Issue 4 — call the backend.
-// Steps: fetch `${API_URL}/api/health`; if not ok, throw.
-//        then fetch `${API_URL}/api/categories`; if not ok, throw.
-//        return { online: true, categories }.
-// Throwing on failure lets the UI show a single Offline/error state.
 export async function checkSystem(): Promise<SystemStatus> {
   const healthRes = await fetch(`${API_URL}/api/health`);
   if (!healthRes.ok) {
@@ -130,4 +125,91 @@ export async function checkSystem(): Promise<SystemStatus> {
     categories: categories,
   };
 }
+
+export interface TicketListItem {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  requestedPriority: Priority;
+  itPriority: Priority;
+  currentStatus: TicketStatus;
+  ticketOwner: string | null;
+  categoryId: number;
+  categoryName: string;
+  relatedSystemId: number;
+  relatedSystemName: string;
+  attachmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginationMetadata {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface TicketListResponse {
+  data: TicketListItem[];
+  pagination: PaginationMetadata;
+}
+
+export interface TicketFilterParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  categoryId?: number | string;
+  requestedPriority?: Priority | "";
+  itPriority?: Priority | "";
+  status?: TicketStatus | "";
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export async function fetchTickets(
+  params: TicketFilterParams = {},
+  requesterId: number
+): Promise<TicketListResponse> {
+  const query = new URLSearchParams();
+  if (params.page !== undefined) query.set("page", params.page.toString());
+  if (params.pageSize !== undefined) query.set("pageSize", params.pageSize.toString());
+  if (params.search !== undefined && params.search !== "") query.set("search", params.search);
+  if (params.categoryId !== undefined && params.categoryId !== "")
+    query.set("categoryId", params.categoryId.toString());
+  if (params.requestedPriority !== undefined && params.requestedPriority !== "")
+    query.set("requestedPriority", params.requestedPriority);
+  if (params.itPriority !== undefined && params.itPriority !== "")
+    query.set("itPriority", params.itPriority);
+  if (params.status !== undefined && params.status !== "") query.set("status", params.status);
+  if (params.sortBy !== undefined && params.sortBy !== "") query.set("sortBy", params.sortBy);
+  if (params.sortOrder !== undefined) query.set("sortOrder", params.sortOrder);
+
+  const queryString = query.toString();
+  const url = `${API_URL}/api/tickets${queryString ? `?${queryString}` : ""}`;
+
+  const res = await fetch(url, {
+    headers: {
+      "X-Requester-Id": requesterId.toString(),
+    },
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to load tickets with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
 

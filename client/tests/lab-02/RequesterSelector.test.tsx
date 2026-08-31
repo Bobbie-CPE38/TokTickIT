@@ -34,6 +34,12 @@ describe("UI-04: Development Requester Context and Selector", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.restoreAllMocks();
+    vi.spyOn(api, "fetchCategories").mockResolvedValue([]);
+    vi.spyOn(api, "fetchRelatedSystems").mockResolvedValue([]);
+    vi.spyOn(api, "fetchTickets").mockResolvedValue({
+      data: [],
+      pagination: { total: 0, page: 1, pageSize: 10, totalPages: 0 },
+    });
   });
 
   afterEach(() => {
