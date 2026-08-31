@@ -132,22 +132,22 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
             aria-label="Profile"
           >
             <div
-              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
               style={{
                 width: "28px",
                 height: "28px",
-                backgroundColor: "rgba(255, 255, 255, 0.2)",
-                fontSize: "0.8rem",
+                backgroundColor: "rgba(0, 0, 0, 0.25)",
+                fontSize: "0.85rem",
               }}
             >
               {currentRequester ? currentRequester.name.charAt(0) : "P"}
             </div>
-            <div className="d-flex flex-column text-start d-none d-sm-block">
-              <span className="fw-semibold small lh-1">
+            <div className="d-flex align-items-baseline gap-2 d-none d-sm-flex">
+              <span className="fw-semibold small text-white">
                 {currentRequester ? currentRequester.name : "Profile"}
               </span>
               {currentRequester && (
-                <span className="text-white-50 small" style={{ fontSize: "0.72rem" }}>
+                <span className="text-white-50" style={{ fontSize: "0.8rem" }}>
                   {currentRequester.department}
                 </span>
               )}
@@ -161,6 +161,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="flex-shrink-0"
             >
               <polyline points="6 9 12 15 18 9" />
             </svg>
