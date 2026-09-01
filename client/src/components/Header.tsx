@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRequester } from "../context/RequesterContext.js";
 
 interface HeaderProps {
-  currentView?: "portal" | "create-ticket" | "my-tickets";
-  onNavigate?: (view: "portal" | "create-ticket" | "my-tickets") => void;
+  currentView?: "portal" | "create-ticket" | "my-tickets" | "ticket-detail";
+  onNavigate?: (view: "portal" | "create-ticket" | "my-tickets" | "ticket-detail") => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNavigate }) => {

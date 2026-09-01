@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRequester } from "../context/RequesterContext.js";
 import {
   Category,
@@ -8,6 +8,7 @@ import {
   fetchCategories,
   fetchRelatedSystems,
   createTicket,
+  uploadAttachment,
 } from "../api.js";
 
 interface CreateTicketProps {
@@ -36,12 +37,17 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
   const [requestedPriority, setRequestedPriority] = useState<Priority>("MEDIUM");
   const [summary, setSummary] = useState<string>("");
   const [description, setDescription] = useState<string>("");
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
 
   // UI State
   const [errors, setErrors] = useState<FormErrors>({});
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [createdTicket, setCreatedTicket] = useState<Ticket | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadMetadata = useCallback(async () => {
     setLoadingMetadata(true);
@@ -66,6 +72,80 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
   useEffect(() => {
     loadMetadata();
   }, [loadMetadata]);
+
+  const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+  const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleAddFiles = (filesList: FileList | File[]) => {
+    setAttachmentError(null);
+    const filesArray = Array.from(filesList);
+    const validFiles: File[] = [];
+
+    for (const file of filesArray) {
+      const ext = file.name.toLowerCase().substring(file.name.lastIndexOf("."));
+      if (!ALLOWED_MIME_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(ext)) {
+        setAttachmentError(`Unsupported file type for "${file.name}". Only JPG, PNG, WEBP, and PDF files are permitted.`);
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setAttachmentError(`File "${file.name}" exceeds the 5 MB size limit.`);
+        return;
+      }
+      validFiles.push(file);
+    }
+
+    if (stagedFiles.length + validFiles.length > 5) {
+      setAttachmentError("You can attach a maximum of 5 files.");
+      return;
+    }
+
+    setStagedFiles((prev) => [...prev, ...validFiles]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleRemoveStagedFile = (index: number) => {
+    setStagedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (stagedFiles.length < 5 && !isSubmitting) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (stagedFiles.length < 5 && !isSubmitting) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (stagedFiles.length >= 5 || isSubmitting) return;
+
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      handleAddFiles(e.dataTransfer.files);
+    }
+  };
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
@@ -123,6 +203,17 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
         currentRequester.id
       );
 
+      // Upload staged attachments if any
+      if (stagedFiles.length > 0) {
+        for (const file of stagedFiles) {
+          try {
+            await uploadAttachment(ticket.id, file, currentRequester.id);
+          } catch (uploadErr) {
+            console.error(`Failed to upload attachment ${file.name}:`, uploadErr);
+          }
+        }
+      }
+
       setCreatedTicket(ticket);
       if (onSuccess) {
         onSuccess(ticket);
@@ -141,7 +232,9 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
     setRequestedPriority("MEDIUM");
     setSummary("");
     setDescription("");
+    setStagedFiles([]);
     setErrors({});
+    setAttachmentError(null);
     setApiError(null);
     setCreatedTicket(null);
   };
@@ -567,22 +660,148 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
               )}
             </div>
 
-            {/* Supporting Attachments Notice */}
-            <div
-              className="p-3 rounded mb-4 border"
-              style={{ backgroundColor: "#F8FAFC", borderColor: "#E2E8F0" }}
-            >
-              <div className="d-flex align-items-center gap-2 mb-1">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#006B3C" strokeWidth="2">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                </svg>
-                <span className="fw-medium small" style={{ color: "#1C2D27" }}>
-                  Supporting Attachments (Optional, max 5 files, 5 MB each, JPG, PNG, WEBP, PDF)
+            {/* Supporting Attachments Section (In-Spec FR-05, UI-Spec 5.2) */}
+            <div className="mb-4">
+              <label className="form-label fw-medium d-block mb-1" style={{ color: "#1C2D27" }}>
+                Supporting Attachments{" "}
+                <span className="text-muted small fw-normal">
+                  (Optional, max 5 files, 5 MB each, JPG, PNG, WEBP, PDF)
                 </span>
+              </label>
+
+              {attachmentError && (
+                <div
+                  className="alert alert-danger py-2 small mb-2 shadow-sm d-flex align-items-center justify-content-between"
+                  style={{ backgroundColor: "#FEE2E2", borderColor: "#EF4444", color: "#991B1B" }}
+                >
+                  <span>{attachmentError}</span>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-sm"
+                    onClick={() => setAttachmentError(null)}
+                    aria-label="Close"
+                  />
+                </div>
+              )}
+
+              {/* Dropzone */}
+              <div
+                className="p-3 border rounded mb-3 text-center"
+                onDragOver={handleDragOver}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                style={{
+                  backgroundColor: isDragging
+                    ? "#EAF6EF"
+                    : stagedFiles.length >= 5
+                    ? "#F3F4F6"
+                    : "#FFFFFF",
+                  borderColor: isDragging
+                    ? "#006B3C"
+                    : stagedFiles.length >= 5
+                    ? "#D1D5DB"
+                    : "#006B3C",
+                  borderStyle: stagedFiles.length >= 5 ? "solid" : "dashed",
+                  borderWidth: "2px",
+                  borderRadius: "8px",
+                  transition: "all 0.2s ease",
+                  cursor: stagedFiles.length >= 5 || isSubmitting ? "not-allowed" : "pointer",
+                }}
+                onClick={() => {
+                  if (stagedFiles.length < 5 && !isSubmitting) {
+                    fileInputRef.current?.click();
+                  }
+                }}
+              >
+                <div className="d-flex flex-column align-items-center justify-content-center py-2">
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center mb-2"
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      backgroundColor: isDragging ? "#006B3C" : "#EAF6EF",
+                      color: isDragging ? "#FFFFFF" : "#006B3C",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </div>
+                  <div className="fw-semibold small" style={{ color: "#1C2D27" }}>
+                    {isDragging
+                      ? "Drop files here"
+                      : stagedFiles.length >= 5
+                      ? "Maximum 5 files attached"
+                      : "Drag & drop files here or browse"}
+                  </div>
+                  <div className="text-muted small mt-0.5">
+                    {stagedFiles.length >= 5
+                      ? "Remove an attached file to add another"
+                      : `Selected ${stagedFiles.length} of 5 files`}
+                  </div>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                  className="visually-hidden"
+                  disabled={stagedFiles.length >= 5 || isSubmitting}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleAddFiles(e.target.files);
+                    }
+                  }}
+                  aria-label="Attach Supporting Files"
+                />
               </div>
-              <div className="text-muted small">
-                Attachments can be uploaded and managed after ticket creation in the Ticket Details view.
-              </div>
+
+              {/* Staged File Pills */}
+              {stagedFiles.length > 0 && (
+                <div className="d-flex flex-wrap gap-2">
+                  {stagedFiles.map((file, idx) => (
+                    <div
+                      key={`${file.name}-${idx}`}
+                      className="badge p-2 d-inline-flex align-items-center gap-2 border text-start"
+                      style={{
+                        backgroundColor: "#F3F6F4",
+                        borderColor: "#E2E8F0",
+                        color: "#1C2D27",
+                        fontSize: "0.825rem",
+                        fontWeight: "normal",
+                        borderRadius: "6px",
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#006B3C" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      <span className="fw-medium text-truncate" style={{ maxWidth: "160px" }}>
+                        {file.name}
+                      </span>
+                      <span className="text-muted small">({formatFileSize(file.size)})</span>
+                      <button
+                        type="button"
+                        className="btn btn-sm p-0 text-muted ms-1"
+                        style={{ lineHeight: 1, border: "none", background: "transparent" }}
+                        disabled={isSubmitting}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveStagedFile(idx);
+                        }}
+                        aria-label={`Remove file ${file.name}`}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Actions */}
@@ -626,3 +845,6 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
     </div>
   );
 };
+
+export default CreateTicket;
+

@@ -212,4 +212,175 @@ export async function fetchTickets(
   return res.json();
 }
 
+export interface Attachment {
+  id: number;
+  ticketId?: number;
+  originalFileName: string;
+  fileSize: number;
+  mimeType: string;
+  isRemoved: boolean;
+  removedAt: string | null;
+  removalReason: string | null;
+  createdAt: string;
+}
+
+export interface TicketDetail {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  description: string;
+  requestedPriority: Priority;
+  itPriority: Priority;
+  currentStatus: TicketStatus;
+  ticketOwner: string | null;
+  resolutionSummary: string | null;
+  requesterId: number;
+  requester: {
+    id: number;
+    name: string;
+    email: string;
+    department: string;
+  };
+  categoryId: number;
+  category: { id: number; name: string };
+  relatedSystemId: number;
+  relatedSystem: { id: number; name: string };
+  attachments: Attachment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function fetchTicketDetail(
+  ticketId: number,
+  requesterId: number
+): Promise<TicketDetail> {
+  const url = `${API_URL}/api/tickets/${ticketId}`;
+  const res = await fetch(url, {
+    headers: {
+      "X-Requester-Id": requesterId.toString(),
+    },
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to load ticket details with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function uploadAttachment(
+  ticketId: number,
+  file: File,
+  requesterId: number
+): Promise<Attachment> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const url = `${API_URL}/api/tickets/${ticketId}/attachments`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "X-Requester-Id": requesterId.toString(),
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Attachment upload failed with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function downloadAttachment(
+  attachmentId: number,
+  requesterId: number,
+  filename: string = "attachment"
+): Promise<void> {
+  const url = `${API_URL}/api/attachments/${attachmentId}/download`;
+  const res = await fetch(url, {
+    headers: {
+      "X-Requester-Id": requesterId.toString(),
+    },
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Download failed with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.error) errorMsg = data.error;
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMsg);
+  }
+
+  const blob = await res.blob();
+  if (typeof window !== "undefined" && window.URL && window.URL.createObjectURL) {
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+  }
+}
+
+export async function softRemoveAttachment(
+  attachmentId: number,
+  removalReason: string,
+  requesterId: number
+): Promise<Attachment> {
+  const url = `${API_URL}/api/attachments/${attachmentId}/soft-remove`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requester-Id": requesterId.toString(),
+    },
+    body: JSON.stringify({ removalReason }),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Soft remove failed with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
 

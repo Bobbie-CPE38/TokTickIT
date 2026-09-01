@@ -1,5 +1,9 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
+import path from "path";
+import fs from "fs";
+import { randomUUID } from "crypto";
+import multer from "multer";
 import { getPrisma } from "./prisma.js";
 // getPrisma() is your lazy database handle. Call it INSIDE a route when you
 // need the DB (Issue 4). It is intentionally unused until then.
@@ -420,6 +424,384 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("[API ERROR] /api/tickets list error:", error);
     res.status(500).json({ error: "Unable to load tickets." });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lab 2 — Get Single Ticket Detail
+// GET /api/tickets/:id
+// ---------------------------------------------------------------------------
+app.get("/api/tickets/:id", async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const requesterIdHeader = req.headers["x-requester-id"];
+
+    if (!requesterIdHeader) {
+      return res.status(401).json({ error: "Unauthorized: Missing X-Requester-Id header." });
+    }
+
+    const requesterId = parseInt(String(requesterIdHeader), 10);
+    if (isNaN(requesterId)) {
+      return res.status(401).json({ error: "Unauthorized: Invalid X-Requester-Id header." });
+    }
+
+    const requester = await prisma.developmentRequester.findUnique({
+      where: { id: requesterId },
+    });
+
+    if (!requester || !requester.isActive) {
+      return res.status(403).json({ error: "Forbidden: Requester is inactive or does not exist." });
+    }
+
+    const ticketId = parseInt(req.params.id, 10);
+    if (isNaN(ticketId)) {
+      return res.status(400).json({ error: "Invalid ticket ID provided." });
+    }
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+          },
+        },
+        category: { select: { id: true, name: true } },
+        relatedSystem: { select: { id: true, name: true } },
+        attachments: {
+          select: {
+            id: true,
+            originalFileName: true,
+            fileSize: true,
+            mimeType: true,
+            isRemoved: true,
+            removedAt: true,
+            removalReason: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!ticket) {
+      return res.status(404).json({ error: "Ticket not found." });
+    }
+
+    if (ticket.requesterId !== requester.id) {
+      return res.status(403).json({ error: "Forbidden: Access denied to this ticket." });
+    }
+
+    res.status(200).json(ticket);
+  } catch (error) {
+    console.error("[API ERROR] /api/tickets/:id error:", error);
+    res.status(500).json({ error: "Unable to load ticket details." });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lab 2 — Attachment Storage Configuration (Multer)
+// ---------------------------------------------------------------------------
+const uploadsDir = path.resolve("uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const key = `${randomUUID()}-${Date.now()}${ext}`;
+    cb(null, key);
+  },
+});
+
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+];
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB max
+  },
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      const err = new Error("Unsupported file type. Only JPEG, PNG, WEBP, and PDF files are allowed.");
+      (err as any).statusCode = 415;
+      return cb(err as any);
+    }
+    cb(null, true);
+  },
+}).single("file");
+
+// ---------------------------------------------------------------------------
+// Lab 2 — Upload Attachment to Ticket
+// POST /api/tickets/:id/attachments
+// ---------------------------------------------------------------------------
+app.post("/api/tickets/:id/attachments", (req: Request, res: Response) => {
+  upload(req, res, async (uploadErr) => {
+    try {
+      const prisma = getPrisma();
+      const requesterIdHeader = req.headers["x-requester-id"];
+
+      if (!requesterIdHeader) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(401).json({ error: "Unauthorized: Missing X-Requester-Id header." });
+      }
+
+      const requesterId = parseInt(String(requesterIdHeader), 10);
+      if (isNaN(requesterId)) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(401).json({ error: "Unauthorized: Invalid X-Requester-Id header." });
+      }
+
+      const requester = await prisma.developmentRequester.findUnique({
+        where: { id: requesterId },
+      });
+
+      if (!requester || !requester.isActive) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(403).json({ error: "Forbidden: Requester is inactive or does not exist." });
+      }
+
+      const ticketId = parseInt(req.params.id, 10);
+      if (isNaN(ticketId)) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: "Invalid ticket ID provided." });
+      }
+
+      // Verify ticket exists and is owned by requester
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(404).json({ error: "Ticket not found." });
+      }
+
+      if (ticket.requesterId !== requester.id) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(403).json({ error: "Forbidden: Access denied to this ticket." });
+      }
+
+      // Handle upload error if any
+      if (uploadErr) {
+        if (uploadErr instanceof multer.MulterError) {
+          if (uploadErr.code === "LIMIT_FILE_SIZE") {
+            return res.status(413).json({ error: "File size exceeds the 5 MB limit." });
+          }
+          return res.status(400).json({ error: uploadErr.message });
+        }
+        if ((uploadErr as any).statusCode === 415) {
+          return res.status(415).json({ error: uploadErr.message });
+        }
+        return res.status(400).json({ error: uploadErr.message || "File upload failed." });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No file provided in form data." });
+      }
+
+      // Check active attachment limit (max 5 active files per ticket)
+      const activeCount = await prisma.attachment.count({
+        where: { ticketId, isRemoved: false },
+      });
+
+      if (activeCount >= 5) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(422).json({
+          error: "Validation failed",
+          details: ["A ticket may have at most 5 active attachments."],
+        });
+      }
+
+      const attachment = await prisma.attachment.create({
+        data: {
+          ticketId,
+          originalFileName: req.file.originalname,
+          storageKey: req.file.filename,
+          fileSize: req.file.size,
+          mimeType: req.file.mimetype,
+          uploadedByRequesterId: requester.id,
+          isRemoved: false,
+        },
+      });
+
+      res.status(201).json({
+        id: attachment.id,
+        ticketId: attachment.ticketId,
+        originalFileName: attachment.originalFileName,
+        fileSize: attachment.fileSize,
+        mimeType: attachment.mimeType,
+        isRemoved: attachment.isRemoved,
+        createdAt: attachment.createdAt.toISOString(),
+      });
+    } catch (error) {
+      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      console.error("[API ERROR] /api/tickets/:id/attachments upload error:", error);
+      res.status(500).json({ error: "Unable to upload attachment." });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Lab 2 — Download Active Attachment
+// GET /api/attachments/:id/download
+// ---------------------------------------------------------------------------
+app.get("/api/attachments/:id/download", async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const requesterIdHeader = req.headers["x-requester-id"];
+
+    if (!requesterIdHeader) {
+      return res.status(401).json({ error: "Unauthorized: Missing X-Requester-Id header." });
+    }
+
+    const requesterId = parseInt(String(requesterIdHeader), 10);
+    if (isNaN(requesterId)) {
+      return res.status(401).json({ error: "Unauthorized: Invalid X-Requester-Id header." });
+    }
+
+    const requester = await prisma.developmentRequester.findUnique({
+      where: { id: requesterId },
+    });
+
+    if (!requester || !requester.isActive) {
+      return res.status(403).json({ error: "Forbidden: Requester is inactive or does not exist." });
+    }
+
+    const attachmentId = parseInt(req.params.id, 10);
+    if (isNaN(attachmentId)) {
+      return res.status(400).json({ error: "Invalid attachment ID provided." });
+    }
+
+    const attachment = await prisma.attachment.findUnique({
+      where: { id: attachmentId },
+      include: { ticket: true },
+    });
+
+    if (!attachment) {
+      return res.status(404).json({ error: "Attachment not found." });
+    }
+
+    if (attachment.ticket.requesterId !== requester.id) {
+      return res.status(403).json({ error: "Forbidden: Access denied to this attachment." });
+    }
+
+    if (attachment.isRemoved) {
+      return res.status(410).json({
+        error: "Attachment has been removed and is no longer available for download.",
+      });
+    }
+
+    const filePath = path.join(uploadsDir, attachment.storageKey);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "File not found on disk." });
+    }
+
+    res.setHeader("Content-Type", attachment.mimeType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(attachment.originalFileName)}"`
+    );
+    res.setHeader("Content-Length", attachment.fileSize);
+
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+  } catch (error) {
+    console.error("[API ERROR] /api/attachments/:id/download error:", error);
+    res.status(500).json({ error: "Unable to download attachment." });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lab 2 — Soft-Remove Attachment
+// PATCH /api/attachments/:id/soft-remove
+// ---------------------------------------------------------------------------
+app.patch("/api/attachments/:id/soft-remove", async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const requesterIdHeader = req.headers["x-requester-id"];
+
+    if (!requesterIdHeader) {
+      return res.status(401).json({ error: "Unauthorized: Missing X-Requester-Id header." });
+    }
+
+    const requesterId = parseInt(String(requesterIdHeader), 10);
+    if (isNaN(requesterId)) {
+      return res.status(401).json({ error: "Unauthorized: Invalid X-Requester-Id header." });
+    }
+
+    const requester = await prisma.developmentRequester.findUnique({
+      where: { id: requesterId },
+    });
+
+    if (!requester || !requester.isActive) {
+      return res.status(403).json({ error: "Forbidden: Requester is inactive or does not exist." });
+    }
+
+    const attachmentId = parseInt(req.params.id, 10);
+    if (isNaN(attachmentId)) {
+      return res.status(400).json({ error: "Invalid attachment ID provided." });
+    }
+
+    const { removalReason } = req.body ?? {};
+    const trimmedReason = typeof removalReason === "string" ? removalReason.trim() : "";
+
+    if (!trimmedReason || trimmedReason.length < 3 || trimmedReason.length > 255) {
+      return res.status(422).json({
+        error: "Validation failed",
+        details: ["Removal reason is required and must be between 3 and 255 characters."],
+      });
+    }
+
+    const attachment = await prisma.attachment.findUnique({
+      where: { id: attachmentId },
+      include: { ticket: true },
+    });
+
+    if (!attachment) {
+      return res.status(404).json({ error: "Attachment not found." });
+    }
+
+    if (attachment.ticket.requesterId !== requester.id) {
+      return res.status(403).json({ error: "Forbidden: Access denied to this attachment." });
+    }
+
+    if (attachment.isRemoved) {
+      return res.status(409).json({ error: "Attachment is already removed." });
+    }
+
+    const updated = await prisma.attachment.update({
+      where: { id: attachmentId },
+      data: {
+        isRemoved: true,
+        removedAt: new Date(),
+        removalReason: trimmedReason,
+      },
+    });
+
+    res.status(200).json({
+      id: updated.id,
+      ticketId: updated.ticketId,
+      originalFileName: updated.originalFileName,
+      isRemoved: updated.isRemoved,
+      removedAt: updated.removedAt?.toISOString(),
+      removalReason: updated.removalReason,
+    });
+  } catch (error) {
+    console.error("[API ERROR] /api/attachments/:id/soft-remove error:", error);
+    res.status(500).json({ error: "Unable to soft-remove attachment." });
   }
 });
 
