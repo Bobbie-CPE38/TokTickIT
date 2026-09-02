@@ -4,18 +4,28 @@ import { Header } from "./components/Header.js";
 import { RequesterSelectorModal } from "./components/RequesterSelectorModal.js";
 import { CreateTicket } from "./components/CreateTicket.js";
 import { MyTickets } from "./components/MyTickets.js";
-import { checkSystem, Category } from "./api.js";
+import { RequesterTicketDetail } from "./components/RequesterTicketDetail.js";
+import { checkSystem, Category, Ticket } from "./api.js";
 
-export type AppView = "portal" | "create-ticket" | "my-tickets";
+export type AppView = "portal" | "create-ticket" | "my-tickets" | "ticket-detail";
 
-function getInitialView(): AppView {
+interface InitialViewState {
+  view: AppView;
+  ticketId: number | null;
+}
+
+function getInitialViewState(): InitialViewState {
   if (typeof window !== "undefined") {
     const pathname = window.location.pathname;
     if (pathname === "/tickets/new") {
-      return "create-ticket";
+      return { view: "create-ticket", ticketId: null };
+    }
+    const match = pathname.match(/^\/tickets\/(\d+)$/);
+    if (match) {
+      return { view: "ticket-detail", ticketId: parseInt(match[1], 10) };
     }
   }
-  return "my-tickets";
+  return { view: "my-tickets", ticketId: null };
 }
 
 function SystemHealthSection() {
@@ -118,19 +128,32 @@ function SystemHealthSection() {
 
 interface AppBodyProps {
   currentView: AppView;
-  navigateTo: (view: AppView) => void;
+  selectedTicketId: number | null;
+  navigateTo: (view: AppView, ticketId?: number | null) => void;
 }
 
-function AppBody({ currentView, navigateTo }: AppBodyProps) {
+function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
   const { currentRequester, isSelectorOpen } = useRequester();
 
   if (!currentRequester || isSelectorOpen) {
     return <RequesterSelectorModal />;
   }
 
+  if (currentView === "ticket-detail" && selectedTicketId) {
+    return (
+      <RequesterTicketDetail
+        ticketId={selectedTicketId}
+        onBack={() => navigateTo("my-tickets")}
+      />
+    );
+  }
+
   if (currentView === "create-ticket") {
     return (
       <CreateTicket
+        onSuccess={(ticket: Ticket) => {
+          // Can stay on success confirmation or navigate
+        }}
         onCancel={() => navigateTo("my-tickets")}
       />
     );
@@ -140,6 +163,7 @@ function AppBody({ currentView, navigateTo }: AppBodyProps) {
     <>
       <MyTickets
         onNavigateCreate={() => navigateTo("create-ticket")}
+        onSelectTicket={(ticketId: number) => navigateTo("ticket-detail", ticketId)}
       />
       <SystemHealthSection />
     </>
@@ -147,18 +171,25 @@ function AppBody({ currentView, navigateTo }: AppBodyProps) {
 }
 
 function AppContent() {
-  const [currentView, setCurrentView] = useState<AppView>(getInitialView);
+  const [initial] = useState<InitialViewState>(getInitialViewState);
+  const [currentView, setCurrentView] = useState<AppView>(initial.view);
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(initial.ticketId);
   const { currentRequester, closeSelector } = useRequester();
+  const prevRequesterIdRef = React.useRef<number | undefined>(currentRequester?.id);
 
   const navigateTo = useCallback(
-    (view: AppView) => {
+    (view: AppView, ticketId: number | null = null) => {
       setCurrentView(view);
+      setSelectedTicketId(ticketId);
       if (currentRequester) {
         closeSelector();
       }
       if (typeof window !== "undefined") {
-        const targetPath =
-          view === "create-ticket" ? "/tickets/new" : view === "my-tickets" ? "/tickets" : "/";
+        let targetPath = "/";
+        if (view === "create-ticket") targetPath = "/tickets/new";
+        else if (view === "ticket-detail" && ticketId) targetPath = `/tickets/${ticketId}`;
+        else if (view === "my-tickets") targetPath = "/tickets";
+
         if (window.location.pathname !== targetPath) {
           window.history.pushState({}, "", targetPath);
         }
@@ -168,8 +199,23 @@ function AppContent() {
   );
 
   useEffect(() => {
+    if (
+      prevRequesterIdRef.current !== undefined &&
+      currentRequester?.id !== undefined &&
+      prevRequesterIdRef.current !== currentRequester?.id
+    ) {
+      if (currentView === "ticket-detail") {
+        navigateTo("my-tickets");
+      }
+    }
+    prevRequesterIdRef.current = currentRequester?.id;
+  }, [currentRequester?.id, currentView, navigateTo]);
+
+  useEffect(() => {
     function handlePopState() {
-      setCurrentView(getInitialView());
+      const state = getInitialViewState();
+      setCurrentView(state.view);
+      setSelectedTicketId(state.ticketId);
     }
     window.addEventListener("popstate", handlePopState);
     return () => {
@@ -179,9 +225,13 @@ function AppContent() {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#F5F7F6" }}>
-      <Header currentView={currentView} onNavigate={navigateTo} />
+      <Header currentView={currentView} onNavigate={(view) => navigateTo(view)} />
       <main>
-        <AppBody currentView={currentView} navigateTo={navigateTo} />
+        <AppBody
+          currentView={currentView}
+          selectedTicketId={selectedTicketId}
+          navigateTo={navigateTo}
+        />
       </main>
     </div>
   );

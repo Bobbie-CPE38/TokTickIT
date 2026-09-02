@@ -217,6 +217,29 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
 
   return (
     <div className="container py-4" style={{ maxWidth: "1200px" }}>
+      <style>{`
+        .ticket-row {
+          cursor: pointer;
+          transition: background-color 0.15s ease-in-out;
+        }
+        .ticket-row:hover td {
+          background-color: #EAF6EF !important;
+        }
+        .ticket-row:hover .ticket-summary-link {
+          color: #006B3C !important;
+          text-decoration: underline;
+        }
+        .ticket-card {
+          cursor: pointer;
+          transition: all 0.2s ease-in-out;
+        }
+        .ticket-card:hover {
+          background-color: #F8FAF9 !important;
+          border-color: #006B3C !important;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 107, 60, 0.12) !important;
+        }
+      `}</style>
       {/* Top Header & Actions */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
         <div>
@@ -624,15 +647,8 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
                 {tickets.map((t) => (
                   <tr
                     key={t.id}
-                    style={{ cursor: "pointer", transition: "background-color 0.15s ease" }}
                     className="ticket-row"
                     onClick={() => onSelectTicket?.(t.id)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#EAF6EF";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }}
                   >
                     <td className="py-3 px-3">
                       <span className="fw-bold" style={{ color: "#006B3C" }}>
@@ -644,7 +660,7 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
                     </td>
                     <td className="py-3 px-3">
                       <div
-                        className="fw-medium text-truncate"
+                        className="fw-medium text-truncate ticket-summary-link"
                         style={{ color: "#1C2D27", maxWidth: "320px" }}
                         title={t.summary}
                       >
@@ -681,11 +697,10 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
               {tickets.map((t) => (
                 <div
                   key={t.id}
-                  className="card border rounded-3 p-3 shadow-sm"
+                  className="card border rounded-3 p-3 shadow-sm ticket-card"
                   style={{
                     backgroundColor: "#FFFFFF",
                     borderColor: "#E2E8F0",
-                    cursor: "pointer",
                   }}
                   onClick={() => onSelectTicket?.(t.id)}
                 >

@@ -250,4 +250,78 @@ describe("Lab 2 Create Ticket UI Tests (UI-01, UI-02, UI-03, UI-04)", () => {
       "Server returns 502 Bad Gateway whenever student attempts to upload assignment ZIP file."
     );
   });
+
+  /**
+   * UI-01b: Staging attachments and uploading them during ticket creation (FR-05, UI-Spec 5.2)
+   */
+  it("stages attachments and uploads them upon successful ticket submission", async () => {
+    localStorage.setItem("toktickit_requester_id", "1");
+
+    const createdTicket: api.Ticket = {
+      id: 202,
+      ticketNumber: "TKT-2026-000202",
+      summary: "Cannot connect to campus wifi in library 4th floor",
+      description: "Getting authorization timeout error when connecting with student account.",
+      requestedPriority: "MEDIUM",
+      itPriority: "MEDIUM",
+      currentStatus: "NEW",
+      ticketOwner: null,
+      resolutionSummary: null,
+      requesterId: 1,
+      categoryId: 4,
+      relatedSystemId: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      category: { id: 4, name: "Network" },
+      relatedSystem: { id: 1, name: "Campus Wi-Fi" },
+    };
+
+    vi.spyOn(api, "createTicket").mockResolvedValue(createdTicket);
+    const uploadAttachmentSpy = vi.spyOn(api, "uploadAttachment").mockResolvedValue({
+      id: 999,
+      ticketId: 202,
+      originalFileName: "screenshot.png",
+      fileSize: 1024,
+      mimeType: "image/png",
+      isRemoved: false,
+      removedAt: null,
+      removalReason: null,
+      createdAt: new Date().toISOString(),
+    });
+
+    render(<App />);
+
+    const createNavBtn = (await screen.findAllByRole("button", { name: /Create Ticket/i }))[0];
+    fireEvent.click(createNavBtn);
+
+    expect(await screen.findByText(/Create New IT Support Ticket/i)).toBeInTheDocument();
+
+    // Fill form
+    fireEvent.change(screen.getByLabelText(/Category/i), { target: { value: "4" } });
+    fireEvent.change(screen.getByLabelText(/Related System/i), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText(/Summary/i), {
+      target: { value: "Cannot connect to campus wifi in library 4th floor" },
+    });
+    fireEvent.change(screen.getByLabelText(/Description/i), {
+      target: { value: "Getting authorization timeout error when connecting with student account." },
+    });
+
+    // Attach file
+    const fileInput = screen.getByLabelText(/Attach Supporting Files/i);
+    const testFile = new File(["dummy content"], "screenshot.png", { type: "image/png" });
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+    // File pill should appear
+    expect(await screen.findByText("screenshot.png")).toBeInTheDocument();
+
+    // Submit
+    const submitBtn = screen.getByRole("button", { name: /Submit Ticket/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(uploadAttachmentSpy).toHaveBeenCalledWith(202, testFile, 1);
+    });
+
+    expect(await screen.findByText(/Ticket Created Successfully/i)).toBeInTheDocument();
+  });
 });
