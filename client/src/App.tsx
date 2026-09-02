@@ -175,6 +175,7 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<AppView>(initial.view);
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(initial.ticketId);
   const { currentRequester, closeSelector } = useRequester();
+  const prevRequesterIdRef = React.useRef<number | undefined>(currentRequester?.id);
 
   const navigateTo = useCallback(
     (view: AppView, ticketId: number | null = null) => {
@@ -196,6 +197,19 @@ function AppContent() {
     },
     [currentRequester, closeSelector]
   );
+
+  useEffect(() => {
+    if (
+      prevRequesterIdRef.current !== undefined &&
+      currentRequester?.id !== undefined &&
+      prevRequesterIdRef.current !== currentRequester?.id
+    ) {
+      if (currentView === "ticket-detail") {
+        navigateTo("my-tickets");
+      }
+    }
+    prevRequesterIdRef.current = currentRequester?.id;
+  }, [currentRequester?.id, currentView, navigateTo]);
 
   useEffect(() => {
     function handlePopState() {

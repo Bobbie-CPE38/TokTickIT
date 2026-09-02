@@ -169,4 +169,104 @@ describe("UI-04: Development Requester Context and Selector", () => {
       expect(screen.getByRole("option", { name: "Jennifer Anderson" })).toBeInTheDocument();
     });
   });
+
+  it("redirects to My Tickets when switching requester while viewing ticket detail", async () => {
+    localStorage.setItem("toktickit_requester_id", "1");
+    localStorage.setItem("toktickit_requester_data", JSON.stringify(mockActiveRequesters[0]));
+    vi.spyOn(api, "fetchActiveRequesters").mockResolvedValue(mockActiveRequesters);
+    vi.spyOn(api, "fetchCategories").mockResolvedValue([{ id: 2, name: "Hardware" }]);
+
+    const mockTicketDetail: api.TicketDetail = {
+      id: 101,
+      ticketNumber: "TKT-2026-000101",
+      summary: "Laptop battery drains quickly",
+      description: "My laptop battery is draining faster than usual.",
+      requestedPriority: "MEDIUM",
+      itPriority: "MEDIUM",
+      currentStatus: "NEW",
+      ticketOwner: null,
+      resolutionSummary: null,
+      requesterId: 1,
+      requester: {
+        id: 1,
+        name: "Jennifer Anderson",
+        email: "jennifer.anderson@kmutt.ac.th",
+        department: "Computer Engineering",
+      },
+      categoryId: 2,
+      category: { id: 2, name: "Hardware" },
+      relatedSystemId: 2,
+      relatedSystem: { id: 2, name: "Corporate Laptop" },
+      attachments: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    vi.spyOn(api, "fetchTicketDetail").mockResolvedValue(mockTicketDetail);
+    vi.spyOn(api, "fetchTickets").mockImplementation(async (_params, requesterId) => {
+      if (requesterId === 1) {
+        return {
+          data: [
+            {
+              id: 101,
+              ticketNumber: "TKT-2026-000101",
+              summary: "Laptop battery drains quickly",
+              categoryId: 2,
+              categoryName: "Hardware",
+              relatedSystemId: 2,
+              relatedSystemName: "Corporate Laptop",
+              attachmentCount: 0,
+              requestedPriority: "MEDIUM",
+              itPriority: "MEDIUM",
+              currentStatus: "NEW",
+              ticketOwner: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+          pagination: { total: 1, page: 1, pageSize: 10, totalPages: 1 },
+        };
+      }
+      return {
+        data: [],
+        pagination: { total: 0, page: 1, pageSize: 10, totalPages: 0 },
+      };
+    });
+
+    render(<App />);
+
+    // Wait for active requester to load
+    await waitFor(() => {
+      expect(screen.getAllByText(/Jennifer Anderson/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Wait for My Tickets to load and click on ticket
+    const ticketBadges = await screen.findAllByText(/TKT-2026-000101/i);
+    expect(ticketBadges.length).toBeGreaterThanOrEqual(1);
+    const ticketRow = (await screen.findAllByText(/Laptop battery drains quickly/i))[0];
+    fireEvent.click(ticketRow);
+
+    // Should be in Ticket Details view
+    expect(await screen.findByText(/Ticket Details/i)).toBeInTheDocument();
+
+    // Now switch requester via header
+    const profileBtn = screen.getByRole("button", { name: /Profile/i });
+    fireEvent.click(profileBtn);
+
+    const switchBtn = screen.getByRole("button", { name: /Switch Requester|Change Requester/i });
+    fireEvent.click(switchBtn);
+
+    // Modal opens, select David Lee (id: 2)
+    const select = (await screen.findByRole("combobox", { name: /Select Requester/i })) as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "2" } });
+
+    const continueBtn = screen.getByRole("button", { name: /Continue/i });
+    fireEvent.click(continueBtn);
+
+    // Modal closes and user is redirected to My Tickets (not showing error on /tickets/101)
+    await waitFor(() => {
+      expect(screen.getByText(/View and track all of your support requests/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Ticket Details/i)).not.toBeInTheDocument();
+    });
+  });
 });
