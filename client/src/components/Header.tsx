@@ -28,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
     >
       <div className="container-fluid d-flex justify-content-between align-items-center">
         {/* Brand and Nav links */}
-        <div className="d-flex align-items-center gap-4">
+        <div className="d-flex align-items-center gap-2 gap-sm-4">
           <a
             href="/"
             className="navbar-brand d-flex align-items-center gap-2 text-white fw-bold m-0 p-0 text-decoration-none"
@@ -57,9 +57,10 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
           </a>
 
           {/* Navigation Items */}
-          <nav className="d-flex align-items-center gap-3">
+          <nav className="d-flex align-items-center gap-1 gap-sm-3">
             <button
               type="button"
+              aria-label="My Tickets"
               className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-2 px-2 py-1 small fw-medium"
               style={{
                 fontSize: "0.9rem",
@@ -88,11 +89,12 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
                 <line x1="16" y1="17" x2="8" y2="17" />
                 <polyline points="10 9 9 9 8 9" />
               </svg>
-              <span>My Tickets</span>
+              <span className="d-none d-sm-inline">My Tickets</span>
             </button>
 
             <button
               type="button"
+              aria-label="Create Ticket"
               className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-2 px-2 py-1 small fw-medium"
               style={{
                 fontSize: "0.9rem",
@@ -116,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
                 <line x1="12" y1="8" x2="12" y2="16" />
                 <line x1="8" y1="12" x2="16" y2="12" />
               </svg>
-              <span>Create Ticket</span>
+              <span className="d-none d-sm-inline">Create Ticket</span>
             </button>
           </nav>
         </div>
