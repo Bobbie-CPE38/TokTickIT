@@ -14,3 +14,6 @@ server/uploads/
 # logs & OS
 *.log
 .DS_Store
+# test output
+test-results/
+playwright-report/

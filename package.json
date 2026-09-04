@@ -1,0 +1,22 @@
+{
+  "name": "toktickit",
+  "version": "1.0.0",
+  "description": "TokTickIT is an IT service desk application for Account and Access, Hardware, Software, and Network requests.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "bugs": {
+    "url": "https://github.com/Bobbie-CPE38/TokTickIT/issues"
+  },
+  "homepage": "https://github.com/Bobbie-CPE38/TokTickIT#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

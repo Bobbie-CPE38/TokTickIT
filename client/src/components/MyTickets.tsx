@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useTransition } from "react";
+import React, { useState, useEffect, useCallback, useTransition, useRef } from "react";
 import { useRequester } from "../context/RequesterContext.js";
 import {
   Category,
@@ -60,9 +60,13 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
     };
   }, []);
 
+  // Ref to track latest request ID to prevent race conditions with out-of-order responses
+  const requestIdRef = useRef(0);
+
   // Fetch tickets whenever filters, sorting, page, or requester changes
   const loadTickets = useCallback(async () => {
     if (!currentRequester) return;
+    const currentRequestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -80,13 +84,19 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
         },
         currentRequester.id
       );
-      setTickets(res.data);
-      setPagination(res.pagination);
+      if (currentRequestId === requestIdRef.current) {
+        setTickets(res.data);
+        setPagination(res.pagination);
+      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unable to load tickets from server.";
-      setError(msg);
+      if (currentRequestId === requestIdRef.current) {
+        const msg = err instanceof Error ? err.message : "Unable to load tickets from server.";
+        setError(msg);
+      }
     } finally {
-      setLoading(false);
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [
     currentRequester,
