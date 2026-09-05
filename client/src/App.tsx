@@ -1,59 +1,246 @@
-import { useState } from "react";
-import { checkSystem, Category } from "./api.js";
+import React, { useState, useEffect, useCallback } from "react";
+import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
+import { Header } from "./components/Header.js";
+import { RequesterSelectorModal } from "./components/RequesterSelectorModal.js";
+import { CreateTicket } from "./components/CreateTicket.js";
+import { MyTickets } from "./components/MyTickets.js";
+import { RequesterTicketDetail } from "./components/RequesterTicketDetail.js";
+import { checkSystem, Category, Ticket } from "./api.js";
 
-// UI states you must handle for Issue 4: idle, loading, success, error.
-type UiState = "idle" | "loading" | "success" | "error";
+export type AppView = "portal" | "create-ticket" | "my-tickets" | "ticket-detail";
 
-export default function App() {
-  const [state, setState] = useState<UiState>("idle");
+interface InitialViewState {
+  view: AppView;
+  ticketId: number | null;
+}
+
+function getInitialViewState(): InitialViewState {
+  if (typeof window !== "undefined") {
+    const pathname = window.location.pathname;
+    if (pathname === "/tickets/new") {
+      return { view: "create-ticket", ticketId: null };
+    }
+    const match = pathname.match(/^\/tickets\/(\d+)$/);
+    if (match) {
+      return { view: "ticket-detail", ticketId: parseInt(match[1], 10) };
+    }
+  }
+  return { view: "my-tickets", ticketId: null };
+}
+
+function SystemHealthSection() {
+  const [status, setStatus] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  void categories;
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  async function handleCheck() {
-    // TODO(Issue 4): set loading, call checkSystem(), then either
-    //   - success: store categories and show Online + the list, or
-    //   - error: show Offline + a useful message.
-    setState("loading");
-    setErrorMessage("");
+  const handleCheck = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const result = await checkSystem();
+      setStatus(result.online ? "Online" : "Offline");
       setCategories(result.categories);
-      setState("success");
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Backend is unavailable.");
-      setState("error");
+      setStatus("Offline");
+      setError(err instanceof Error ? err.message : "Backend is unavailable.");
+      setCategories([]);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  return (
+    <div className="container py-4">
+      <div
+        className="card border-0 shadow-sm p-4"
+        style={{
+          backgroundColor: "#FFFFFF",
+          borderRadius: "8px",
+          border: "1px solid #E2E8F0",
+        }}
+      >
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div className="d-flex align-items-center gap-2">
+            <span
+              className="rounded-circle"
+              style={{
+                width: "10px",
+                height: "10px",
+                backgroundColor:
+                  status === "Online"
+                    ? "#006B3C"
+                    : status === "Offline"
+                    ? "#DC2626"
+                    : "#D97706",
+                display: "inline-block",
+              }}
+            />
+            <h2 className="h6 fw-bold mb-0 text-uppercase tracking-wide" style={{ color: "#1C2D27" }}>
+              System Catalog &amp; Health (Lab 1)
+            </h2>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-success"
+            style={{ borderColor: "#006B3C", color: "#006B3C" }}
+            onClick={handleCheck}
+            disabled={loading}
+          >
+            {loading ? "Checking..." : "Check System"}
+          </button>
+        </div>
+
+        {status && (
+          <div className="mb-3">
+            <span className={`badge ${status === "Online" ? "bg-success" : "bg-danger"}`}>
+              Status: {status}
+            </span>
+          </div>
+        )}
+
+        {categories.length > 0 && (
+          <div>
+            <span className="text-muted small d-block mb-2">Supported Categories:</span>
+            <div className="d-flex flex-wrap gap-2">
+              {categories.map((c) => (
+                <span
+                  key={c.id}
+                  className="badge px-3 py-2 fw-medium"
+                  style={{ backgroundColor: "#EAF6EF", color: "#006B3C", border: "1px solid #C2E2D3" }}
+                >
+                  {c.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="alert alert-danger mt-3 mb-0 py-2 small" role="alert">
+            {error}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface AppBodyProps {
+  currentView: AppView;
+  selectedTicketId: number | null;
+  navigateTo: (view: AppView, ticketId?: number | null) => void;
+}
+
+function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
+  const { currentRequester, isSelectorOpen } = useRequester();
+
+  if (!currentRequester || isSelectorOpen) {
+    return <RequesterSelectorModal />;
+  }
+
+  if (currentView === "ticket-detail" && selectedTicketId) {
+    return (
+      <RequesterTicketDetail
+        ticketId={selectedTicketId}
+        onBack={() => navigateTo("my-tickets")}
+      />
+    );
+  }
+
+  if (currentView === "create-ticket") {
+    return (
+      <CreateTicket
+        onSuccess={(ticket: Ticket) => {
+          // Can stay on success confirmation or navigate
+        }}
+        onCancel={() => navigateTo("my-tickets")}
+      />
+    );
   }
 
   return (
-    <div className="container py-5" style={{ maxWidth: 640 }}>
-      <h1 className="h3 mb-4">
-        TokTickIT <span className="text-success">IT Service Desk</span>
-      </h1>
+    <>
+      <MyTickets
+        onNavigateCreate={() => navigateTo("create-ticket")}
+        onSelectTicket={(ticketId: number) => navigateTo("ticket-detail", ticketId)}
+      />
+      <SystemHealthSection />
+    </>
+  );
+}
 
-      <button className="btn btn-success mb-4" onClick={handleCheck} disabled={state === "loading"}>
-        {state === "loading" ? "Loading…" : "Check System"}
-      </button>
+function AppContent() {
+  const [initial] = useState<InitialViewState>(getInitialViewState);
+  const [currentView, setCurrentView] = useState<AppView>(initial.view);
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(initial.ticketId);
+  const { currentRequester, closeSelector } = useRequester();
+  const prevRequesterIdRef = React.useRef<number | undefined>(currentRequester?.id);
 
-      {/* TODO(Issue 4): render loading / success (Online + categories) / error (Offline) states. */}
-      {state === "success" && (
-        <div className="alert alert-success">
-          <div className="fw-bold">Status: Online</div>
-          <ul>
-            {categories.map((cat) => (
-              <li key={cat.id}>{cat.name}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+  const navigateTo = useCallback(
+    (view: AppView, ticketId: number | null = null) => {
+      setCurrentView(view);
+      setSelectedTicketId(ticketId);
+      if (currentRequester) {
+        closeSelector();
+      }
+      if (typeof window !== "undefined") {
+        let targetPath = "/";
+        if (view === "create-ticket") targetPath = "/tickets/new";
+        else if (view === "ticket-detail" && ticketId) targetPath = `/tickets/${ticketId}`;
+        else if (view === "my-tickets") targetPath = "/tickets";
 
-      {state === "error" && (
-        <div className="alert alert-danger">
-          <div className="fw-bold mb-1">Status: Offline</div>
-          <div>{errorMessage || "Backend is unavailable."}</div>
-        </div>
-      )}
+        if (window.location.pathname !== targetPath) {
+          window.history.pushState({}, "", targetPath);
+        }
+      }
+    },
+    [currentRequester, closeSelector]
+  );
+
+  useEffect(() => {
+    if (
+      prevRequesterIdRef.current !== undefined &&
+      currentRequester?.id !== undefined &&
+      prevRequesterIdRef.current !== currentRequester?.id
+    ) {
+      if (currentView === "ticket-detail") {
+        navigateTo("my-tickets");
+      }
+    }
+    prevRequesterIdRef.current = currentRequester?.id;
+  }, [currentRequester?.id, currentView, navigateTo]);
+
+  useEffect(() => {
+    function handlePopState() {
+      const state = getInitialViewState();
+      setCurrentView(state.view);
+      setSelectedTicketId(state.ticketId);
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  return (
+    <div style={{ minHeight: "100vh", backgroundColor: "#F5F7F6" }}>
+      <Header currentView={currentView} onNavigate={(view) => navigateTo(view)} />
+      <main>
+        <AppBody
+          currentView={currentView}
+          selectedTicketId={selectedTicketId}
+          navigateTo={navigateTo}
+        />
+      </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <RequesterProvider>
+      <AppContent />
+    </RequesterProvider>
   );
 }

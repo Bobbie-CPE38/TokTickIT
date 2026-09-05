@@ -1,0 +1,21 @@
+# Lab 2 — AI Use and Reflection  (fill this in)
+
+**LLM/agent used:** Antigravity (Gemini 3.7 Flash / Gemini 3.8 Flash)
+
+## Selected key prompts (6–10)
+| # | Prompt (summarised) | What I did with the result | My Reflection |
+|---|---------------------|----------------------------|---------------|
+| 1 | Read provided labsheet and draft required docs in `docs/lab-02/` (`specification.md`, `ui-spec.md`, `api-spec.md`, `tests.md`). Do not touch other places or `reviewer.md`/`ai-use.md`. | Checked the generated specs and test plans against the labsheet before writing any code. | Setting clear boundaries and telling the AI not to touch code prevented unnecessary files. It did the docs in one shot. |
+| 2 | Plan implementation into GitHub issues with detailed descriptions, and write `AGENTS.md` with instructions for future AI sessions to maximize productivity. | Used the issue breakdown to plan the Kanban board, and saved `AGENTS.md` in the project root. | Having `AGENTS.md` saved a lot of time later. I could just tell the AI to "Follow AGENTS.md" in new issues instead of re-explaining the whole project. |
+| 3 | When backend is stopped, app briefly flashed "IT service desk portal" before selector. Clarify flow when localStorage is empty vs populated, plan the fix, and do not implement until approved. | Followed the plan to fix the UI flow so it shows the right screen when the backend is offline. | Telling the AI "don't implement yet, plan first" stopped it from rushing into messy code. It made sure we agreed on the flow first. |
+| 4 | Pointed out UI bugs (duplicate `+` icon, URL not updating on form open), requested button spacing, and rejected generic PR draft ("Not good. Here's example of what I want") with reference format. | Used the fixes for the button and routing bugs, and used the regenerated PR description. | The AI's first PR draft was too generic. Giving it an exact example from Issue 2 made it write the PR description in the right format. |
+| 5 | Include realistic seed data for reviewer (10+ tickets for Jennifer Anderson to test pagination), and ensure users stay on `/tickets` with offline retry when server drops instead of kicking to selector. | Ran the seed script to create sample tickets, and tested that the page shows an offline retry state properly. | Adding seed data with 10+ tickets made it easy for my partner to test pagination right away without creating tickets manually. |
+| 6 | In Create Ticket page, Category and Related System dropdowns that should have been disabled during backend downtime were re-enabling on retry. Fix it and show a clear warning banner. | Verified the fix so the dropdowns stay disabled and show a clear warning when the server is down. | The automated tests passed, but manual testing found this UI bug. Describing the exact steps let the AI fix it easily. |
+| 7 | Shared peer reviewer feedback: switching requester while viewing a ticket shouldn't strand user on a 403 error page; automatically redirect user back to My Tickets (`/tickets`). | Applied the code changes to redirect the user to My Tickets after switching requester. | Passing my partner's review comment directly into the prompt worked really well. The AI understood the context and fixed it right away. |
+| 8 | Verified E2E acceptance criteria coverage (`E2E-01`) and requested a manual testing guide plus an E2E explanation artifact with code examples for learning Playwright. | Read the guide to understand how Playwright works, ran the E2E tests, and took screenshots across different screen sizes. | Asking the AI to explain what the tests do and give code examples helped me learn E2E testing instead of just copy-pasting tests. |
+
+## Reflection
+Two or three sentences: what made your prompts better, and one place you had to
+correct or reject what the agent produced.
+
+Giving the agent clear acceptance criteria, using `AGENTS.md` as context, and asking for a plan before executing made the results much better and avoided wasted work. However, the agent still struggled with PR drafts and edge-case UI flows—like how the app behaves when the server is down or when there's data in localStorage—so I had to reject its generic PR draft, provide my own template, and manually test and correct the flow.
