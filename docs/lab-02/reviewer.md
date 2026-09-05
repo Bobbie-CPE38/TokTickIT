@@ -331,3 +331,71 @@
   Feel free to merge if everything look good.
   ```
 - **My Response:** Merge feature/lab2-attachment to lab2-staging branch
+
+### PR: chore: Finalize tests, docs, and visual inspection for lab 2 (#30)
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/30
+- **My comment (Initial review):**
+  ```
+  - Some of the tests are not implemented.
+  - Remove docs/lab-02/image.png?
+  ```
+  Inline review comment on `docs/lab-02/image.png`:
+  ```
+  Should this be here?
+  ```
+- **Partner's response:**
+  ```
+  Thanks for catching that! I'll remove docs/lab-02/image.png and start implementing all those missing tests right away.
+  ```
+  ```
+  I have implemented the actual tests for all the client components and E2E flows, and also removed the image as requested. Could you please review it again?
+  ```
+- **My comment (Re-review):**
+  ```
+  There're 2 files that's still not implemented
+  - client/tests/lab-02/Responsive.test.tsx
+  - client/tests/lab-02/Style.test.tsx
+
+  ### Mention
+  Don't forget to update docs/lab-02/tests.md after everything is done:
+  - In the Planned Tests table, change the Final column from - to Pass.
+  - In Section 6 (Final Results), replace *(To be updated after implementation)* with a confirmation that all 15 test suites and 18 automated tests pass locally.
+  ```
+- **Partner's response:**
+  ```
+  I've pushed the fixes. Could you recheck?
+  ```
+- **My comment (Third review):**
+  ```
+  - Minor mistake in docs/lab-02/reviewer.md (commented)
+  - Still unable to follow E2E tests instruction. There's no package.json in root directory so it don't know what to install **probably**
+  <img width="1452" height="256" alt="Image" src="https://github.com/user-attachments/assets/80db319f-d861-49de-9449-08b21bb787c3" />
+  ```
+  Inline review comment on `docs/lab-02/reviewer.md`:
+  ```
+  (Issue #23 is the actual issue for Attachment Management; #29 was the PR number).
+  ```
+- **Partner's response:**
+  Inline response on `docs/lab-02/reviewer.md`:
+  ```
+  Changes pushed. Let me know what you think now.
+  ```
+- **My comment (Fourth review):**
+  ```
+  Very minor mistake in Issue link.
+  ```
+  Inline review comment on `docs/lab-02/reviewer.md`:
+  ```
+  The issue link should be changed from `https://github.com/RBKarnz/TokTickIT/issues/29` to `https://github.com/RBKarnz/TokTickIT/issues/23`
+  ```
+- **Partner's response:**
+  ```
+  Could you please check this again? Feel free to merge if everything looks good.
+  ```
+- **My comment (Final review):**
+  Approved.
+  ```
+  Looking good now.
+  Front-end, back-end, end-to-end tests passed.
+  ```
+- **My Response:** Merge feature/lab2-final-tests to lab2-staging branch
