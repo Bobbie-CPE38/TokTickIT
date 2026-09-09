@@ -146,13 +146,15 @@ Key expectations:
 | **BR-11** | **IT Priority Decoupling** | Upon ticket creation, `itPriority` is automatically initialized with the Requester's `requestedPriority`. Subsequent modifications to `itPriority` can only be performed by IT Staff or Administrators. |
 | **BR-12** | **Append-Only Communication Records** | Public Comments and Internal Notes are strictly append-only. No user (including Administrators) can edit or delete an existing comment or note. The backend automatically binds `authorId = currentUser.id` and `createdAt = now()`. |
 | **BR-13** | **Comment & Note Content Validation** | Public Comments and Internal Notes must contain between 1 and 2,000 characters after whitespace trimming. Empty or whitespace-only submissions must be rejected with HTTP 422 Unprocessable Entity. Output must be sanitized to prevent Cross-Site Scripting (XSS). |
-| **BR-14** | **Permitted Status Transitions & Confirmations** | Ticket status changes must follow the authorized lifecycle rules: <br>• `NEW` → `OPEN`, `IN_PROGRESS`, `CANCELLED`<br>• `OPEN` → `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`<br>• `IN_PROGRESS` → `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `WAITING_FOR_REQUESTER` → `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `RESOLVED` → `CLOSED`, `REOPENED`<br>• `REOPENED` → `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `CLOSED` → Terminal (no transitions permitted)<br>• `CANCELLED` → Terminal (no transitions permitted)<br>Only IT Staff and Administrators may execute status transitions. Direct jumps outside this matrix must be rejected with HTTP 422. <br>**Required Confirmations:** Transitioning to `RESOLVED` requires a confirmation modal with mandatory `resolutionSummary`. Transitioning to `CLOSED` or `CANCELLED` requires a confirmation modal acknowledging terminal/irreversible progression. |
+| **BR-14** | **Permitted Status Transitions & Confirmations** | Ticket status changes must follow the authorized lifecycle rules: <br>• `NEW` → `OPEN`, `IN_PROGRESS`, `CANCELLED`<br>• `OPEN` → `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`<br>• `IN_PROGRESS` → `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `WAITING_FOR_REQUESTER` → `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `RESOLVED` → `CLOSED`, `REOPENED`<br>• `REOPENED` → `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `CLOSED` → Terminal (no transitions permitted)<br>• `CANCELLED` → Terminal (no transitions permitted)<br>Only IT Staff and Administrators may execute status transitions. Direct jumps outside this matrix must be rejected with HTTP 422. <br>**Required Confirmations:** Progressing a ticket to terminal/irreversible statuses (`CANCELLED`, `CLOSED`) or `RESOLVED` explicitly mandates a confirmation modal in the UI. Transitioning to `RESOLVED` requires a non-empty `resolutionSummary`. |
 | **BR-15** | **Resolution Summary Requirement** | Transitioning a ticket to `RESOLVED` or `CLOSED` requires a non-empty `resolutionSummary` (minimum 5 characters, maximum 1,000 characters) explaining the resolution. |
 | **BR-16** | **Self-Deactivation Protection** | An Administrator cannot deactivate their own user account or change their own role away from `ADMINISTRATOR`. Such attempts must be rejected with HTTP 422 Unprocessable Entity. |
 | **BR-17** | **Last Active Administrator Protection** | The system must prevent deactivating or reassigning the role of the last remaining active Administrator in the database. Any action that would reduce the active Administrator count to zero must be rejected with HTTP 422 Unprocessable Entity. |
 | **BR-18** | **Account Deactivation Over Deletion** | User accounts are never physically deleted from the database (`User.delete` is disabled). Inactive accounts (`isActive = false`) are preserved to maintain foreign key integrity with historical tickets, comments, notes, and attachments. |
 | **BR-19** | **Initial Password Flagging** | Whenever an Administrator creates a new user or resets a user's initial password, the account must be saved with `mustChangePassword = true`. |
 | **BR-20** | **Form State Retention on API Failure** | When form submissions fail on any screen (Login, Password Change, Create User, Edit User, Post Comment, Note, or Status Change), all entered input values must remain intact in the UI controls to prevent data loss. |
+| **BR-21** | **Current User Context & Active Session Validation** | `GET /api/auth/me` resolves identity from the verified session/token. If an account has been deactivated (`isActive = false`) after token issuance, subsequent API requests must be rejected immediately with HTTP 403 Forbidden. |
+| **BR-22** | **Lab 2 Functional Regression Integrity** | All completed Lab 2 ticket submission, category/system listing, attachment upload, download, and soft-remove capabilities must continue functioning identically under the authenticated `User` model without the mock Development Requester selector. |
 
 ---
 
@@ -359,16 +361,16 @@ model InternalNote {
    - Add `passwordHash VARCHAR(255) NOT NULL`.
    - Add `role VARCHAR(50) NOT NULL DEFAULT 'REQUESTER'`.
    - Add `mustChangePassword BOOLEAN NOT NULL DEFAULT false`.
-3. **Data Preservation & Role Mapping:** Existing Lab 2 users are migrated and assigned their proper operational Lab 3 roles and initial passwords with harmonized `@toktickit.com` addresses:
-   - `Jennifer Anderson` (`janderson@toktickit.com`) -> Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`
-   - `Michael Brown` (`mbrown@toktickit.com`) -> Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`
-   - `David Lee` (`dlee@toktickit.com`) -> Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`
-   - `Sarah Johnson` (`sjohnson@toktickit.com`) -> Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`
-   - `Alex Inactive` (`alex.inactive@toktickit.com`) -> Role: `REQUESTER`, `isActive: false`, Password: `Password123!`
-   - `John Smith` (`admin@toktickit.com`) -> Role: `ADMINISTRATOR`, Password: `AdminPass123!`, `mustChangePassword: false`
+3. **Data Preservation & Role Mapping:** Existing Lab 2 users are migrated to the `User` model with roles assigned appropriately and receive initial bcrypt passwords with `mustChangePassword = true` and harmonized `@toktickit.com` email addresses:
+   - `Jennifer Anderson` (`janderson@toktickit.com`) $\rightarrow$ Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`
+   - `Michael Brown` (`mbrown@toktickit.com`) $\rightarrow$ Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`
+   - `David Lee` (`dlee@toktickit.com`) $\rightarrow$ Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`
+   - `Sarah Johnson` (`sjohnson@toktickit.com`) $\rightarrow$ Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`
+   - `Alex Inactive` (`alex.inactive@toktickit.com`) $\rightarrow$ Role: `REQUESTER`, `isActive: false`, Password: `Password123!`
+   - `John Smith` (`admin@toktickit.com`) $\rightarrow$ Role: `ADMINISTRATOR`, Password: `AdminPass123!`, `mustChangePassword: false`
 4. **Ticket & Attachment Schema Evolution:**
    - Foreign key `requesterId` in `tickets` is rebound to `users(id)`.
-   - In `attachments`, column `uploadedByRequesterId` is renamed to `uploadedByUserId` and rebound to `users(id)`.
+   - In `attachments`, column `uploadedByRequesterId` is renamed to `uploadedByUserId` referencing `users(id)`.
    - Add `ticketOwnerId INT NULL REFERENCES users(id) ON DELETE SET NULL`.
    - Add `isRequesterResolved BOOLEAN NOT NULL DEFAULT false`.
    - Migrate enum `TicketStatus`: Rename `PENDING` to `WAITING_FOR_REQUESTER`, add `REOPENED` and `CANCELLED`.
@@ -411,9 +413,9 @@ Full schemas, parameters, and error formats are specified in `docs/lab-03/api-sp
 | `GET` | `/api/tickets` | List tickets owned by authenticated Requester | `REQUESTER` |
 | `GET` | `/api/tickets/:id` | Retrieve single owned ticket detail (404 if not owned) | `REQUESTER` (owner only) |
 | `PATCH` | `/api/tickets/:id/resolve-indication`| Requester indicates problem appears resolved | `REQUESTER` (owner only) |
-| `POST` | `/api/tickets/:id/attachments` | Upload attachment to owned ticket | `REQUESTER` (owner), `IT_STAFF`, `ADMINISTRATOR` |
-| `GET` | `/api/attachments/:id/download`| Download active attachment | Authenticated (Requester owner / Staff / Admin) |
-| `PATCH` | `/api/attachments/:id/soft-remove`| Soft-remove attachment with mandatory reason | Authenticated (Requester owner / Staff / Admin) |
+| `POST` | `/api/tickets/:id/attachments` | Upload attachment to owned ticket | `REQUESTER` (owner), `IT_STAFF` (owner) |
+| `GET` | `/api/attachments/:id/download`| Download active attachment | `REQUESTER` (owner), `IT_STAFF`, `ADMINISTRATOR` |
+| `PATCH` | `/api/attachments/:id/soft-remove`| Soft-remove attachment with mandatory reason | `REQUESTER` (owner), `IT_STAFF`, `ADMINISTRATOR` |
 | `GET` | `/api/staff/tickets` | Retrieve shared IT ticket queue (search, filter, sort, page) | `IT_STAFF`, `ADMINISTRATOR` |
 | `GET` | `/api/staff/tickets/:id` | Retrieve single ticket detail with relations for IT ops | `IT_STAFF`, `ADMINISTRATOR` |
 | `PATCH` | `/api/staff/tickets/:id/assignment`| Claim or reassign ticket ownership | `IT_STAFF`, `ADMINISTRATOR` |
@@ -442,45 +444,45 @@ Full schemas, parameters, and error formats are specified in `docs/lab-03/api-sp
   - *When* login succeeds,
   - *Then* normal application screens remain unavailable until a valid new password meeting complexity rules is saved.
 
-- **AC-03 (Requester Identity Binding & Isolation):**
-  - *Given* an authenticated Requester,
-  - *When* the client supplies another `requesterId` in the request body or header,
-  - *Then* the backend still applies the authenticated identity and does not return or bind another Requester’s data.
-
-- **AC-04 (Internal Notes Protection from Requesters):**
-  - *Given* a Requester account,
-  - *When* an Internal Note endpoint (`GET` or `POST /api/tickets/:id/notes`) is requested,
-  - *Then* the operation is rejected with HTTP 403 Forbidden without exposing note content or existence.
-
-- **AC-05 (Inactive Account Login Blocking):**
-  - *Given* a user account with `isActive = false`,
-  - *When* the user attempts to log in with correct credentials,
-  - *Then* authentication is rejected with HTTP 403 Forbidden and the safe error message "Account is inactive. Please contact your system administrator."
-
-- **AC-06 (Invalid Credentials Safe Feedback):**
-  - *Given* an incorrect email address or invalid password,
-  - *When* the user attempts login,
-  - *Then* the system responds with HTTP 401 Unauthorized and displays "Invalid email or password. Please try again." without disclosing account existence.
-
-- **AC-07 (Password Complexity Validation):**
+- **AC-03 (Password Complexity Validation):**
   - *Given* a user on the change password screen,
   - *When* the user submits a password under 8 characters or missing uppercase/lowercase/numbers/special characters,
   - *Then* submission is rejected with field-level validation feedback, and the database password hash remains unchanged.
 
-- **AC-08 (Logout Session Invalidation):**
+- **AC-04 (Inactive Account Login Blocking):**
+  - *Given* a user account with `isActive = false`,
+  - *When* the user attempts to log in with correct credentials,
+  - *Then* authentication is rejected with HTTP 403 Forbidden and the safe error message "Account is inactive. Please contact your system administrator."
+
+- **AC-05 (Invalid Credentials Safe Feedback):**
+  - *Given* an incorrect email address or invalid password,
+  - *When* the user attempts login,
+  - *Then* the system responds with HTTP 401 Unauthorized and displays "Invalid email or password. Please try again." without disclosing account existence.
+
+- **AC-06 (Logout Session Termination):**
   - *Given* an authenticated user session,
   - *When* the user clicks "Sign Out",
-  - *Then* the backend invalidates the token, client-side credentials are cleared, and subsequent requests with the token return HTTP 401 Unauthorized.
+  - *Then* the backend terminates the session, client authentication tokens are cleared, and navigating back redirects to `/login`.
 
-- **AC-09 (IT Staff Single Ticket Detail Retrieval):**
-  - *Given* an authenticated IT Staff or Administrator user,
-  - *When* the user requests a ticket by ID (`GET /api/staff/tickets/:id`),
-  - *Then* the backend returns full ticket details including category, related system, owner, attachments, public comments, internal notes, and requester resolution status.
+- **AC-07 (Requester Identity Binding):**
+  - *Given* an authenticated Requester session,
+  - *When* the user submits a new ticket or requests ticket lists,
+  - *Then* the backend automatically resolves ownership from the authenticated session and completely ignores any client-supplied `requesterId`.
 
-- **AC-10 (Shared IT Queue Filtering, Search, & Pagination):**
+- **AC-08 (Requester Ticket Isolation):**
+  - *Given* Requester A and Requester B,
+  - *When* Requester A attempts to fetch or modify a ticket belonging to Requester B,
+  - *Then* the backend rejects the request with HTTP 404 Not Found and discloses zero ticket metadata.
+
+- **AC-09 (Internal Notes Protection from Requesters):**
+  - *Given* an authenticated Requester account,
+  - *When* the client attempts to access `GET /api/tickets/:id/notes` or `POST /api/tickets/:id/notes`,
+  - *Then* the operation is rejected with HTTP 403 Forbidden without disclosing whether internal notes exist.
+
+- **AC-10 (Shared IT Queue Filtering & Search):**
   - *Given* an authenticated IT Staff user on the Ticket Queue,
-  - *When* the user filters by status, category, priority, or owner, or searches by keyword,
-  - *Then* the queue updates dynamically to display only matching tickets with accurate pagination metadata.
+  - *When* the user filters by `Status = OPEN` and searches for keyword "network",
+  - *Then* the queue updates dynamically to display only matching tickets with correct pagination metadata.
 
 - **AC-11 (Ticket Ownership Claiming & Reassignment):**
   - *Given* an unassigned ticket in the IT queue,
@@ -490,12 +492,12 @@ Full schemas, parameters, and error formats are specified in `docs/lab-03/api-sp
 - **AC-12 (Decoupled IT Priority Modification):**
   - *Given* an open ticket with `requestedPriority = MEDIUM`,
   - *When* an IT Staff user updates the IT Priority to `URGENT`,
-  - *Then* `itPriority` is updated in the database while `requestedPriority` remains unchanged.
+  - *Then* `itPriority` is updated in the database while `requestedPriority` remains `MEDIUM`.
 
-- **AC-13 (Permitted Ticket Status Transitions & Confirmation):**
+- **AC-13 (Permitted Ticket Status Transition Enforcement):**
   - *Given* a ticket with status `NEW`,
   - *When* an IT Staff user transitions the status to `IN_PROGRESS`,
-  - *Then* the transition succeeds; but attempting a direct jump to `CLOSED` is rejected with HTTP 422 Unprocessable Entity. Transitioning to `RESOLVED` requires a confirmation modal with non-empty `resolutionSummary`.
+  - *Then* the transition succeeds; but attempting a direct transition from `NEW` to `CLOSED` is rejected with HTTP 422 Unprocessable Entity. Transitioning to `RESOLVED` requires a confirmation modal and non-empty `resolutionSummary`.
 
 - **AC-14 (Public Comments Collaboration):**
   - *Given* an open ticket,
@@ -512,55 +514,50 @@ Full schemas, parameters, and error formats are specified in `docs/lab-03/api-sp
   - *When* the Requester clicks "Problem Appears Resolved",
   - *Then* `isRequesterResolved` is set to `true`, a banner notifies IT Staff that the requester considers the issue solved, while the formal `currentStatus` remains unchanged until staff acts.
 
-- **AC-17 (Requester Attachment Continuation & Soft Removal):**
-  - *Given* an authenticated Requester viewing an owned ticket,
-  - *When* the Requester uploads a permitted file (≤ 5 MB) or soft-removes an attachment with a valid reason,
-  - *Then* the attachment operation succeeds under `uploadedByUserId`, soft-removed files block download (`410 Gone`), and metadata remains visible.
-
-- **AC-18 (Attachment Multi-Tenant Isolation):**
-  - *Given* an attachment on a ticket owned by Requester A,
-  - *When* Requester B attempts to download or soft-remove it,
-  - *Then* the backend rejects the request with HTTP 404 Not Found without leaking file existence.
-
-- **AC-19 (Administrator User Creation & Initial Password):**
+- **AC-17 (Administrator User Creation & Initial Password):**
   - *Given* an authenticated Administrator,
   - *When* the Administrator creates a user with email, name, role `IT_STAFF`, and initial password,
   - *Then* the user is saved with `mustChangePassword = true` and can authenticate using the initial credentials.
 
-- **AC-20 (Administrator User Account Editing):**
-  - *Given* an authenticated Administrator editing a user account via `PATCH /api/admin/users/:id`,
-  - *When* the Administrator updates the user's name, email, role, or activation state,
-  - *Then* the changes are persisted in the database and reflected immediately in the user list.
-
-- **AC-21 (Administrator Initial Password Reset):**
-  - *Given* an existing user account,
-  - *When* an Administrator sets a new initial password via `POST /api/admin/users/:id/reset-password`,
-  - *Then* the password hash is updated, `mustChangePassword` is set to `true`, and the user is required to change password at next login.
-
-- **AC-22 (Duplicate Email Rejection on Create & Edit):**
-  - *Given* an existing user with email `dlee@toktickit.com`,
-  - *When* an Administrator attempts to create another user or update an existing user with that same email,
+- **AC-18 (Duplicate Email Rejection):**
+  - *Given* an existing user with email `david.lee@toktickit.com`,
+  - *When* an Administrator attempts to create another user with that same email,
   - *Then* the operation is rejected with HTTP 409 Conflict and an inline validation error is shown.
 
-- **AC-23 (Administrator Self-Deactivation Guard):**
-  - *Given* an authenticated Administrator editing their own account,
-  - *When* the Administrator attempts to deactivate their own account or change their role,
+- **AC-19 (Administrator Self-Deactivation Guard):**
+  - *Given* an authenticated Administrator editing user accounts,
+  - *When* the Administrator attempts to deactivate their own account,
   - *Then* the UI disables the action and the backend rejects the request with HTTP 422 Unprocessable Entity.
 
-- **AC-24 (Last Active Administrator Guard):**
+- **AC-20 (Last Active Administrator Guard):**
   - *Given* exactly one active Administrator in the system,
   - *When* an update attempts to deactivate that Administrator or change their role,
   - *Then* the backend rejects the request with HTTP 422 Unprocessable Entity with a clear explanatory error message.
 
-- **AC-25 (Role-Based Endpoint Protection):**
+- **AC-21 (Role-Based Endpoint Protection):**
   - *Given* an authenticated Requester or IT Staff member,
   - *When* the user attempts to access an endpoint outside their permitted role (e.g., Requester accessing `/api/admin/users` or `/api/staff/tickets`; IT Staff accessing `/api/admin/users`),
   - *Then* the backend returns HTTP 403 Forbidden.
 
-- **AC-26 (Lab 2 Database Migration Integrity):**
-  - *Given* pre-existing Lab 2 tickets, categories, related systems, and attachments,
-  - *When* the Lab 3 database migration runs,
-  - *Then* all existing tickets remain linked to their original owners (now in `users`), attachments retain metadata, and no data is corrupted or lost.
+- **AC-22 (Administrator User Account Editing):**
+  - *Given* an authenticated Administrator,
+  - *When* updating an existing user’s name, email, role, or active status via `PATCH /api/admin/users/:id`,
+  - *Then* changes are persisted and immediately reflected in user queries.
+
+- **AC-23 (Administrator Initial Password Reset):**
+  - *Given* an authenticated Administrator,
+  - *When* resetting a user's initial password via `POST /api/admin/users/:id/reset-password`,
+  - *Then* the password hash updates, `mustChangePassword` is set to `true`, and the user is forced to change their password upon their next login.
+
+- **AC-24 (IT Staff Single Ticket Detail Retrieval):**
+  - *Given* an authenticated IT Staff or Administrator user,
+  - *When* accessing `GET /api/staff/tickets/:id`,
+  - *Then* the backend returns the full ticket record including requester profile, owner, category, system, active attachments, public comments, and internal notes.
+
+- **AC-25 (Requester Attachment Continuation & Isolation):**
+  - *Given* an authenticated Requester,
+  - *When* uploading an attachment (`POST /api/tickets/:id/attachments`), downloading (`GET /api/attachments/:id/download`), or soft-removing (`PATCH /api/attachments/:id/soft-remove`),
+  - *Then* operations succeed on owned tickets, and cross-requester access attempts return HTTP 404 Not Found without leaking attachment metadata.
 
 ---
 
@@ -568,11 +565,11 @@ Full schemas, parameters, and error formats are specified in `docs/lab-03/api-sp
 
 ### 10.1. Product Completion DoD
 1. **Scope Integrity:** All functional capabilities in Section 3.1 are implemented adhering to this specification and the Zen Green theme without invoking out-of-scope items.
-2. **Acceptance Verification:** All 26 Acceptance Criteria (AC-01 through AC-26) pass with demonstrable automated test proof.
+2. **Acceptance Verification:** All 25 Acceptance Criteria (AC-01 through AC-25) pass with demonstrable automated test proof.
 3. **Automated Test Quality:**
    - Vitest backend integration tests pass with 100% success rate across all test suites (`auth.api.test.ts`, `authorization.api.test.ts`, `staff-queue.api.test.ts`, `staff-ticket-detail.api.test.ts`, `comments-notes.api.test.ts`, `users-admin.api.test.ts`).
    - Vitest frontend component tests pass with 100% success rate across all client suites (`Login.test.tsx`, `ChangePassword.test.tsx`, `StaffTicketQueue.test.tsx`, `StaffTicketDetail.test.tsx`, `UserManagement.test.tsx`).
-   - Playwright E2E suites pass across desktop, tablet, and mobile viewports (`authentication.spec.ts`, `staff-ticket-flow.spec.ts`, `user-administration.spec.ts`).
+   - Playwright E2E suites pass across desktop, tablet, and mobile viewports (`authentication.spec.ts`, `first-login.spec.ts`, `staff-ticket-flow.spec.ts`, `user-administration.spec.ts`).
    - Zero skipped or artificially mocked tests.
 4. **Data Model Integrity:** Database migrations execute cleanly via Prisma, preserving existing Lab 2 ticket and attachment data, column renames execute cleanly, and the idempotent seed script (`npm run prisma:seed`) runs reliably.
 5. **Code Quality:** Zero TypeScript compiler errors (`npx tsc --noEmit` on both server and client), clean ESLint logs, and no exposed credentials in repository code.
@@ -593,5 +590,5 @@ Full schemas, parameters, and error formats are specified in `docs/lab-03/api-sp
 2. **Password Hashing Standard:** bcrypt with 10 salt rounds is selected for password hashing, balancing security against login response times.
 3. **Status Progression Decoupling:** Requesters are restricted to setting `isRequesterResolved = true` as an advisory flag; formal ticket resolution requires an IT Staff member to confirm and supply a `resolutionSummary`.
 4. **Append-Only Communication:** Comments and notes cannot be updated or deleted to maintain strict audit integrity.
-5. **Initial Password UI Decision:** While the handout wireframe mockup displays a "Send password reset email" checkbox, Section 4.2 of the handout explicitly excludes email delivery and password reset services. Therefore, the application implements a direct input for the Administrator to set an Initial Password with `mustChangePassword = true` enforced upon first login.
-6. **Administrator UI Scope vs. API Authority:** Per Section 4.3, Administrator and IT Staff responsibilities remain conceptually separate in the UI shell (Admins manage users; Staff manage tickets). However, at the database and API level, Administrators possess authorization to participate in ticket triage and ownership where necessary.
+5. **Administrator UI Scope vs. API Authority:** Per Section 4.3 of the handout, Administrator and IT Staff responsibilities remain conceptually separate in the UI shell (Admins manage user accounts; IT Staff manage tickets). Administrators possess backend API authorization for ticket queue endpoints (and can be assigned as ticket owners per Section 4.5), but the Admin UI application shell intentionally provides only the User Management interface to maintain clean role boundaries.
+6. **Initial Password UI Decision:** While the handout wireframe mockup displays a "Send password reset email" checkbox, Section 4.2 of the handout explicitly excludes email delivery and password reset services. Therefore, the application implements a direct input for the Administrator to set an Initial Password with `mustChangePassword = true` enforced upon first login.

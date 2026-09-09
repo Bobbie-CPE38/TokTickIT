@@ -9,7 +9,7 @@ This specification defines the complete REST API contract for the TokTickIT Auth
 - **Protocol:** HTTP/1.1 or HTTP/2
 - **Data Format:** Standard payloads use `application/json; charset=utf-8`. File uploads use `multipart/form-data`. Binary downloads stream native MIME payloads.
 
-### 1.2. Authentication, Session Architecture, and CSRF Protection
+### 1.2. Authentication, Session Architecture, and CSRF Considerations
 Lab 3 fully deprecates the temporary `X-Requester-Id` header introduced in Lab 2. All protected endpoints authenticate incoming requests using standard JSON Web Tokens (JWT) passed in the `Authorization` header:
 
 ```http
@@ -31,11 +31,10 @@ Authorization: Bearer <jwt-token>
    ```
 3. **Token Expiration:** JWT tokens expire after **8 hours** (`exp = 28800 seconds`).
 4. **Session Invalidation on Logout:** Calling `POST /api/auth/logout` adds the JWT token ID/signature to a server-side invalidation blocklist until its natural expiration, immediately revoking client access.
-5. **Architectural CSRF Mitigation:** 
-   - Authentication tokens are transmitted exclusively through the custom `Authorization: Bearer <token>` HTTP header, rather than ambient browser cookies.
-   - Because standard web browsers do **not** automatically attach the `Authorization` header to cross-origin requests (unlike ambient session cookies), malicious third-party websites cannot execute unauthorized state-changing actions on behalf of the user.
-   - Consequently, traditional Cross-Site Request Forgery (CSRF) attack vectors are structurally eliminated without needing synchronized CSRF tokens.
-   - Strict Cross-Origin Resource Sharing (CORS) is enforced by the backend (`origin: http://localhost:5173`, allowed methods: `GET, POST, PATCH, OPTIONS`, allowed headers: `Content-Type, Authorization`).
+5. **CSRF Considerations & Architectural Justification:**
+   - The application adopts a stateless Bearer token authentication model transmitted through the custom `Authorization: Bearer <token>` HTTP header, completely avoiding ambient browser session cookies.
+   - Standard web browsers do **not** attach custom HTTP headers to cross-origin requests automatically. Because third-party cross-site requests cannot submit the `Authorization` header without explicit client-side JavaScript cooperation, traditional Cross-Site Request Forgery (CSRF) attack vectors are structurally prevented.
+   - Cross-Origin Resource Sharing (CORS) is strictly restricted to trusted frontend origins (`http://localhost:5173`) with allowed methods `GET, POST, PATCH, OPTIONS` and allowed headers `Content-Type, Authorization`.
 6. **Secret Security:** The token signing secret `JWT_SECRET` is loaded from server environment variables and is never exposed in client bundles or committed to source repositories.
 
 ---
@@ -49,11 +48,11 @@ Authorization: Bearer <jwt-token>
 | `GET /api/categories`, `GET /api/related-systems` | Allowed | Allowed | Allowed |
 | `POST /api/tickets` (Create Ticket) | Allowed | Allowed | Forbidden (403) |
 | `GET /api/tickets` (My Tickets) | Allowed (Own only) | Forbidden (403) | Forbidden (403) |
-| `GET /api/tickets/:id` (Requester Detail) | Allowed (Own only) | Forbidden (403) | Forbidden (403) |
+| `GET /api/tickets/:id` (Requester Detail) | Allowed (Own only; 404 if not owned) | Forbidden (403) | Forbidden (403) |
 | `PATCH /api/tickets/:id/resolve-indication` | Allowed (Own only) | Forbidden (403) | Forbidden (403) |
-| `POST /api/tickets/:id/attachments` (Upload) | Allowed (Own only) | Allowed | Allowed |
+| `POST /api/tickets/:id/attachments` (Upload) | Allowed (Own only) | Allowed (Own only) | Forbidden (403) |
 | `GET /api/attachments/:id/download` (Download) | Allowed (Own only) | Allowed | Allowed |
-| `PATCH /api/attachments/:id/soft-remove` | Allowed (Own only) | Allowed | Allowed |
+| `PATCH /api/attachments/:id/soft-remove` (Remove) | Allowed (Own only) | Allowed | Allowed |
 | `GET /api/staff/tickets` (Queue) | Forbidden (403) | Allowed | Allowed |
 | `GET /api/staff/tickets/:id` (Staff Detail) | Forbidden (403) | Allowed | Allowed |
 | `PATCH /api/staff/tickets/:id/assignment` | Forbidden (403) | Allowed | Allowed |
@@ -67,7 +66,7 @@ Authorization: Bearer <jwt-token>
 | `PATCH /api/admin/users/:id` | Forbidden (403) | Forbidden (403) | Allowed |
 | `POST /api/admin/users/:id/reset-password` | Forbidden (403) | Forbidden (403) | Allowed |
 
-*Note on Information Leakage Prevention: When a Requester attempts to access a Ticket or Attachment owned by another user, the API responds with `404 Not Found` rather than `403 Forbidden` to prevent leaking whether the resource exists.*
+*Note on Information Leakage Prevention: When a Requester attempts to access a Ticket or Attachment owned by another user, the API responds with `404 Not Found` rather than `403 Forbidden` to prevent probing or enumeration of existing resources.*
 
 ---
 
@@ -151,7 +150,7 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 
 ### 2.3. Current User Context
 - **Path:** `GET /api/auth/me`
-- **Description:** Returns the authenticated user's current identity and profile.
+- **Description:** Returns the authenticated user's current identity and profile. If account was deactivated after token issuance, rejects with HTTP 403 Forbidden per BR-21.
 - **Authorization:** Bearer token required
 - **Response `200 OK`:**
   ```json
@@ -166,6 +165,7 @@ All error responses adhere to a consistent, safe JSON structure that never expos
   ```
 - **Error Responses:**
   - `401 Unauthorized`: Missing or expired token.
+  - `403 Forbidden`: User account is deactivated.
 
 ---
 
@@ -268,7 +268,7 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 - **Authorization:** `REQUESTER` (strictly owned tickets only)
 - **Response `200 OK`:** Full ticket object including category, relatedSystem, active/removed attachments, public comments, and `isRequesterResolved`.
 - **Error Responses:**
-  - `404 Not Found`: Ticket does not exist or belongs to another user (prevents leaking ticket existence).
+  - `404 Not Found`: Ticket does not exist or belongs to another user (`{"error": "Ticket not found"}`). Prevents probing or leaking ticket existence.
 
 ---
 
@@ -289,16 +289,16 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 
 ---
 
-### 3.5. Requester Attachment Lifecycle Endpoints
+### 3.5. Attachment Continuation Endpoints
 
 #### 3.5.1. Upload Attachment
 - **Path:** `POST /api/tickets/:id/attachments`
-- **Description:** Uploads a file attachment to an owned ticket.
-- **Authorization:** `REQUESTER` (owner), `IT_STAFF`, `ADMINISTRATOR`
+- **Description:** Uploads an attachment to an owned ticket under the authenticated user session.
+- **Authorization:** `REQUESTER` (owned ticket only), `IT_STAFF` (owned ticket only)
 - **Content-Type:** `multipart/form-data`
-- **Form Field:** `file` (binary payload)
+- **Form Field:** `file` (binary stream)
 - **Validation Rules:**
-  - MIME types permitted: `image/jpeg`, `image/png`, `image/webp`, `application/pdf`.
+  - Permitted MIME types: `image/jpeg`, `image/png`, `image/webp`, `application/pdf`.
   - Max file size: 5 MB (5,242,880 bytes).
   - Max active attachments per ticket: 5.
 - **Response `201 Created`:**
@@ -315,8 +315,10 @@ All error responses adhere to a consistent, safe JSON structure that never expos
   }
   ```
 - **Error Responses:**
-  - `404 Not Found`: Ticket not found or not owned by Requester.
-  - `413 Payload Too Large`: File exceeds 5 MB.
+  - `400 Bad Request`: Missing file payload.
+  - `401 Unauthorized`: Missing or invalid token.
+  - `404 Not Found`: Ticket does not exist or not owned by Requester.
+  - `413 Payload Too Large`: File exceeds 5 MB limit.
   - `415 Unsupported Media Type`: File format not permitted.
   - `422 Unprocessable Entity`: Ticket already has 5 active attachments.
 
@@ -324,12 +326,13 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 - **Path:** `GET /api/attachments/:id/download`
 - **Description:** Streams binary file payload with original filename header.
 - **Authorization:** `REQUESTER` (if owner of parent ticket), `IT_STAFF`, `ADMINISTRATOR`
-- **Response `200 OK`:** Binary file stream with headers:
+- **Response `200 OK`:** Binary stream with response headers:
   - `Content-Disposition: attachment; filename="vpn_error.png"`
   - `Content-Type: image/png`
 - **Error Responses:**
-  - `404 Not Found`: Attachment does not exist or parent ticket not accessible to user.
-  - `410 Gone`: Attachment has been soft-removed.
+  - `401 Unauthorized`: Missing or invalid token.
+  - `404 Not Found`: Attachment does not exist or user lacks permission to parent ticket.
+  - `410 Gone`: Attachment has been soft-removed (`{"error": "Attachment has been removed"}`).
 
 #### 3.5.3. Soft-Remove Attachment
 - **Path:** `PATCH /api/attachments/:id/soft-remove`
@@ -353,8 +356,10 @@ All error responses adhere to a consistent, safe JSON structure that never expos
   }
   ```
 - **Error Responses:**
-  - `404 Not Found`: Attachment not found or not owned.
-  - `422 Unprocessable Entity`: `removalReason` missing or shorter than 3 characters.
+  - `400 Bad Request`: Missing `removalReason`.
+  - `401 Unauthorized`: Missing or invalid token.
+  - `404 Not Found`: Attachment does not exist or unauthorized.
+  - `422 Unprocessable Entity`: `removalReason` shorter than 3 characters or whitespace-only.
 
 ---
 
@@ -378,15 +383,12 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 
 #### Behavior for Invalid Query Parameters:
 1. **Invalid Enum Parameters (`status`, `requestedPriority`, `itPriority`):**
-   - Returns **`400 Bad Request`** with error: `{"error": "Invalid filter parameter", "details": ["Value 'XYZ' is not a valid status"]}`.
-2. **Invalid `sortBy` Field:**
-   - Returns **`400 Bad Request`** with error: `{"error": "Invalid sort field", "details": ["Allowed fields: createdAt, updatedAt, ticketNumber, itPriority, status"]}`.
-3. **Invalid `sortOrder`:**
-   - Falls back safely to default (`desc`).
-4. **Invalid Numeric Parameters (`page`, `pageSize`, `categoryId`):**
-   - Non-integer or negative `page` / `pageSize` values return **`400 Bad Request`** (`{"error": "Invalid pagination parameter"}`).
+   - Returns **`400 Bad Request`** with error details: `{"error": "Invalid query parameter", "details": ["Value 'INVALID_VAL' is not a valid status enum"]}`.
+2. **Invalid Numerical Parameters (`page`, `pageSize`):**
+   - Negative, zero, or non-integer values for `page` or `pageSize` are sanitized by falling back to safe defaults (`page = 1`, `pageSize = 10`).
    - `pageSize` values exceeding `50` are automatically clamped to `50`.
-   - Non-existent `categoryId` returns empty result array with `total: 0`.
+3. **Unrecognized `sortBy` Field:**
+   - Falls back safely to default sort ordering (`createdAt` descending).
 
 - **Response `200 OK`:**
   ```json

@@ -255,7 +255,7 @@ All screens, components, and interactive states must integrate seamlessly into a
 - **Public Comments Tab:**
   - Displays chronological discussion entries with author initials avatar, full name, role badge, and human-formatted timestamp.
   - New comment form includes character counter (`0 / 2000`) and "Post Comment" button with busy spinner.
-- **Attachment Lifecycle Continuation:** Requesters can download active files, upload new files (≤ 5 MB, max 5 active), and soft-remove attachments with a confirmation dialog and mandatory removal reason.
+- **Attachment Continuation:** Requesters can download active files, upload new files (≤ 5 MB, max 5 active), and soft-remove attachments with a confirmation dialog and mandatory removal reason.
 - **Isolation Protection:** Requesters have zero visual controls for Internal Notes or IT assignment.
 
 ---
@@ -284,18 +284,18 @@ All screens, components, and interactive states must integrate seamlessly into a
 +-----------------------------------------------------------------------------------------------+
 ```
 
-#### Justification for IT Staff Queue Columns (Avoiding Mega-Grid):
-Per Section 8.3 of the handout, the table avoids an unreadable mega-grid by including exactly the **8 operational triage fields**:
-1. `Ticket No`: Unique identifier essential for referencing work.
-2. `Created Date`: Needed for FIFO triage and aging analysis.
-3. `Summary`: Brief statement of the problem to identify incident type at a glance.
-4. `Category`: High-level classification to align with staff technical specialization.
-5. `Req. Priority`: Requester's original assessment.
-6. `IT Priority`: Operational priority driving queue sorting and SLA focus.
-7. `Status`: Lifecycle stage to distinguish actionable work from pending items.
-8. `Owner`: Assigned staff member to prevent duplicate claiming.
+#### Column Justification Paragraph (Avoiding an Unreadable Mega-Grid):
+Per Section 8.3 of the handout, the IT Staff Ticket Queue strictly selects **8 essential operational columns**:
+1. `Ticket No`: Primary identifier necessary for lookup and communication.
+2. `Created Date`: Critical for FIFO queuing, age monitoring, and triage SLA.
+3. `Summary`: Direct view of the problem to identify incident type at a glance.
+4. `Category`: Essential for routing work to domain specialists.
+5. `Req. Priority`: Original severity as reported by the employee.
+6. `IT Priority`: Operational priority calibrated by IT Staff to drive sorting.
+7. `Status`: Operational lifecycle state indicating immediate actionability.
+8. `Owner`: Assigned IT Staff member to prevent duplicate claiming.
 
-*Why `Last Updated` and `Related System` were excluded from the queue table:* `Last Updated` fluctuates constantly on background activities, creating visual noise, while `Related System` is specific technical context readily viewable inside Ticket Detail. Keeping them off the main queue prevents horizontal scrolling on standard laptop displays (`1366x768`).
+*Why `Last Updated` and `Related System` were excluded from the queue table:* `Last Updated` fluctuates constantly on background activities, creating visual noise, while `Related System` is specific technical context readily accessible inside the Ticket Detail view. Omitting them guarantees a readable, uncluttered table that prevents horizontal overflow across standard desktop and tablet viewports.
 
 ---
 
@@ -306,8 +306,8 @@ Per Section 8.3 of the handout, the table avoids an unreadable mega-grid by incl
 | My Queue > Ticket Detail                                                  [ <- Back to Queue ]|
 |                                                                                               |
 | +-------------------------------------------------------------------------------------------+ |
-| | [i] Requester Jennifer Anderson indicated that this problem appears resolved.             | |
-| | Action: Please verify resolution with the requester and transition status to Resolved.    | |
+| | [i] Requester indicated this issue appears resolved.                                      | |
+| | Please confirm and update status to Resolved.                                             | |
 | +-------------------------------------------------------------------------------------------+ |
 |                                                                                               |
 | +-------------------------------------------------------------------------------------------+ |
@@ -342,15 +342,15 @@ Per Section 8.3 of the handout, the table avoids an unreadable mega-grid by incl
 ```
 
 #### Functional & Visual Rules:
-- **"Problem Appears Resolved" Alert Banner:**
+- **"Problem Appears Resolved" Indicator Banner:**
   - Displayed prominently in pale green (`#EAF6EF`) with green border (`#0B7A46`) at the top of the detail panel when `isRequesterResolved = true`.
-  - Alerts IT Staff that the requester considers the issue fixed, guiding staff to confirm and formally transition status to `Resolved` or `Closed`.
+  - Notice text: *"Requester indicated this issue appears resolved. Please confirm and update status to Resolved."*
 - **Editable Operational Fields:**
   - `Ticket Owner`: Dropdown with option to "Claim Ticket" or assign to any active IT Staff / Administrator.
   - `IT Priority`: Dropdown selector (`Low`, `Medium`, `High`, `Urgent`).
   - `Current Status`: Dropdown showing only valid permitted transitions based on current state.
 - **Required Confirmations for Status Transitions:**
-  - **Transition to `RESOLVED`:** Prompts modal: *"Resolve Ticket — Please enter a Resolution Summary explaining how the issue was fixed for the requester."* Blocks submission if summary is less than 5 characters.
+  - **Transition to `RESOLVED`:** Prompts confirmation modal requiring `Resolution Summary` (min 5 chars). Blocks submission if empty.
   - **Transition to `CLOSED`:** Prompts modal: *"Close Ticket — Are you sure you want to permanently close this ticket? This action is terminal."*
   - **Transition to `CANCELLED`:** Prompts modal: *"Cancel Ticket — Are you sure you want to cancel this ticket? Cancelled tickets cannot be reopened."*
 - **Tabs:**
@@ -417,7 +417,7 @@ Per Section 8.3 of the handout, the table avoids an unreadable mega-grid by incl
 ```
 
 #### Functional & Visual Rules:
-- **Initial Password UI Rationale:** While the handout wireframe mockup displays a "Send password reset email" checkbox, Section 4.2 of the handout explicitly excludes email delivery and password reset services. Therefore, the application implements a direct text input for the Administrator to set an Initial Password with `mustChangePassword = true` enforced upon first login.
+- **Initial Password Design Decision:** While the handout wireframe mockup displays a "Send password reset email" checkbox, Section 4.2 of the handout explicitly excludes email delivery and password reset services. Therefore, the application implements a direct text input for the Administrator to set an Initial Password with `mustChangePassword = true` enforced upon first login.
 - **Safety Guards:**
   - When editing own administrator account: "Active Status" toggle is disabled, and "Deactivate User" button is disabled with tooltip: *"You cannot deactivate your own account."*
   - When editing the last remaining active Administrator: Role dropdown does not allow changing to non-admin, and Deactivation is disabled with tooltip: *"System requires at least one active Administrator."*
