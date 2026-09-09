@@ -9,7 +9,7 @@ This specification defines the complete REST API contract for the TokTickIT Auth
 - **Protocol:** HTTP/1.1 or HTTP/2
 - **Data Format:** Standard payloads use `application/json; charset=utf-8`. File uploads use `multipart/form-data`. Binary downloads stream native MIME payloads.
 
-### 1.2. Authentication & Session Architecture
+### 1.2. Authentication, Session Architecture, and CSRF Protection
 Lab 3 fully deprecates the temporary `X-Requester-Id` header introduced in Lab 2. All protected endpoints authenticate incoming requests using standard JSON Web Tokens (JWT) passed in the `Authorization` header:
 
 ```http
@@ -22,7 +22,7 @@ Authorization: Bearer <jwt-token>
    ```json
    {
      "id": 1,
-     "email": "user@toktickit.com",
+     "email": "janderson@toktickit.com",
      "role": "REQUESTER",
      "mustChangePassword": false,
      "iat": 1747123200,
@@ -30,8 +30,15 @@ Authorization: Bearer <jwt-token>
    }
    ```
 3. **Token Expiration:** JWT tokens expire after **8 hours** (`exp = 28800 seconds`).
-4. **Session Invalidation on Logout:** Calling `POST /api/auth/logout` adds the JWT token ID/signature to an in-memory or Redis-backed invalidation blocklist until its natural expiration, immediately revoking client access.
-5. **Secret Security:** The token signing secret `JWT_SECRET` is loaded from server environment variables and is never exposed in client bundles or committed to source repositories.
+4. **Session Invalidation on Logout:** Calling `POST /api/auth/logout` adds the JWT token ID/signature to a server-side invalidation blocklist until its natural expiration, immediately revoking client access.
+5. **Architectural CSRF Mitigation:** 
+   - Authentication tokens are transmitted exclusively through the custom `Authorization: Bearer <token>` HTTP header, rather than ambient browser cookies.
+   - Because standard web browsers do **not** automatically attach the `Authorization` header to cross-origin requests (unlike ambient session cookies), malicious third-party websites cannot execute unauthorized state-changing actions on behalf of the user.
+   - Consequently, traditional Cross-Site Request Forgery (CSRF) attack vectors are structurally eliminated without needing synchronized CSRF tokens.
+   - Strict Cross-Origin Resource Sharing (CORS) is enforced by the backend (`origin: http://localhost:5173`, allowed methods: `GET, POST, PATCH, OPTIONS`, allowed headers: `Content-Type, Authorization`).
+6. **Secret Security:** The token signing secret `JWT_SECRET` is loaded from server environment variables and is never exposed in client bundles or committed to source repositories.
+
+---
 
 ### 1.3. Role-Based Authorization Matrix
 
@@ -39,15 +46,19 @@ Authorization: Bearer <jwt-token>
 |---|---|---|---|
 | `POST /api/auth/login`, `POST /api/auth/logout` | Allowed | Allowed | Allowed |
 | `GET /api/auth/me`, `POST /api/auth/change-password` | Allowed | Allowed | Allowed |
-| `POST /api/tickets` (Create Ticket) | Allowed | Allowed | Forbidden |
-| `GET /api/tickets` (My Tickets) | Allowed (Own only) | Forbidden | Forbidden |
-| `GET /api/tickets/:id` (Ticket Detail) | Allowed (Own only) | Forbidden | Forbidden |
-| `PATCH /api/tickets/:id/resolve-indication` | Allowed (Own only) | Forbidden | Forbidden |
-| `GET /api/staff/tickets` (Queue) | Forbidden | Allowed | Allowed |
-| `GET /api/staff/tickets/:id` (Staff Detail) | Forbidden | Allowed | Allowed |
-| `PATCH /api/staff/tickets/:id/assignment` | Forbidden | Allowed | Allowed |
-| `PATCH /api/staff/tickets/:id/priority` | Forbidden | Allowed | Allowed |
-| `PATCH /api/staff/tickets/:id/status` | Forbidden | Allowed | Allowed |
+| `GET /api/categories`, `GET /api/related-systems` | Allowed | Allowed | Allowed |
+| `POST /api/tickets` (Create Ticket) | Allowed | Allowed | Forbidden (403) |
+| `GET /api/tickets` (My Tickets) | Allowed (Own only) | Forbidden (403) | Forbidden (403) |
+| `GET /api/tickets/:id` (Requester Detail) | Allowed (Own only) | Forbidden (403) | Forbidden (403) |
+| `PATCH /api/tickets/:id/resolve-indication` | Allowed (Own only) | Forbidden (403) | Forbidden (403) |
+| `POST /api/tickets/:id/attachments` (Upload) | Allowed (Own only) | Allowed | Allowed |
+| `GET /api/attachments/:id/download` (Download) | Allowed (Own only) | Allowed | Allowed |
+| `PATCH /api/attachments/:id/soft-remove` | Allowed (Own only) | Allowed | Allowed |
+| `GET /api/staff/tickets` (Queue) | Forbidden (403) | Allowed | Allowed |
+| `GET /api/staff/tickets/:id` (Staff Detail) | Forbidden (403) | Allowed | Allowed |
+| `PATCH /api/staff/tickets/:id/assignment` | Forbidden (403) | Allowed | Allowed |
+| `PATCH /api/staff/tickets/:id/priority` | Forbidden (403) | Allowed | Allowed |
+| `PATCH /api/staff/tickets/:id/status` | Forbidden (403) | Allowed | Allowed |
 | `GET /api/tickets/:id/comments` | Allowed (Own only) | Allowed | Allowed |
 | `POST /api/tickets/:id/comments` | Allowed (Own only) | Allowed | Allowed |
 | `GET /api/tickets/:id/notes` | Forbidden (403) | Allowed | Allowed |
@@ -55,6 +66,10 @@ Authorization: Bearer <jwt-token>
 | `GET /api/admin/users`, `POST /api/admin/users` | Forbidden (403) | Forbidden (403) | Allowed |
 | `PATCH /api/admin/users/:id` | Forbidden (403) | Forbidden (403) | Allowed |
 | `POST /api/admin/users/:id/reset-password` | Forbidden (403) | Forbidden (403) | Allowed |
+
+*Note on Information Leakage Prevention: When a Requester attempts to access a Ticket or Attachment owned by another user, the API responds with `404 Not Found` rather than `403 Forbidden` to prevent leaking whether the resource exists.*
+
+---
 
 ### 1.4. Standard Error Response Shape
 All error responses adhere to a consistent, safe JSON structure that never exposes internal database schemas, stack traces, or raw driver errors:
@@ -71,10 +86,10 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 ### 1.5. HTTP Status Code Conventions
 - `200 OK`: Request succeeded.
 - `201 Created`: Resource successfully created.
-- `400 Bad Request`: Malformed JSON, missing body parameters, or invalid path parameters.
+- `400 Bad Request`: Malformed JSON, missing required body parameters, or invalid query/path parameters.
 - `401 Unauthorized`: Missing, expired, or invalid authentication token.
-- `403 Forbidden`: Authenticated user lacks permission to access or modify the requested resource.
-- `404 Not Found`: Resource does not exist.
+- `403 Forbidden`: Authenticated user lacks role permissions to access or execute the requested operation.
+- `404 Not Found`: Resource does not exist (or cross-user resource masked for privacy).
 - `409 Conflict`: Unique constraint violation (e.g., duplicate email address).
 - `410 Gone`: Attachment has been soft-removed.
 - `413 Payload Too Large`: Uploaded file exceeds the 5 MB limit.
@@ -183,7 +198,7 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 
 ### 3.1. Create Ticket
 - **Path:** `POST /api/tickets`
-- **Description:** Creates a ticket owned by the authenticated Requester.
+- **Description:** Creates a ticket owned by the authenticated user.
 - **Authorization:** `REQUESTER` or `IT_STAFF`
 - **Request Body:**
   ```json
@@ -251,9 +266,9 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 - **Path:** `GET /api/tickets/:id`
 - **Description:** Retrieves full ticket details owned by the authenticated Requester.
 - **Authorization:** `REQUESTER` (strictly owned tickets only)
-- **Response `200 OK`:** Full ticket object including category, relatedSystem, active/removed attachments, and `isRequesterResolved`.
+- **Response `200 OK`:** Full ticket object including category, relatedSystem, active/removed attachments, public comments, and `isRequesterResolved`.
 - **Error Responses:**
-  - `403 Forbidden` / `404 Not Found`: Ticket belongs to another user.
+  - `404 Not Found`: Ticket does not exist or belongs to another user (prevents leaking ticket existence).
 
 ---
 
@@ -274,10 +289,72 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 
 ---
 
-### 3.5. Attachments Continuation
-- `POST /api/tickets/:id/attachments`: Upload attachment (multipart/form-data, max 5 MB, max 5 active).
-- `GET /api/attachments/:id/download`: Download binary stream.
-- `PATCH /api/attachments/:id/soft-remove`: Soft-remove attachment with required `removalReason` (3–255 chars).
+### 3.5. Requester Attachment Lifecycle Endpoints
+
+#### 3.5.1. Upload Attachment
+- **Path:** `POST /api/tickets/:id/attachments`
+- **Description:** Uploads a file attachment to an owned ticket.
+- **Authorization:** `REQUESTER` (owner), `IT_STAFF`, `ADMINISTRATOR`
+- **Content-Type:** `multipart/form-data`
+- **Form Field:** `file` (binary payload)
+- **Validation Rules:**
+  - MIME types permitted: `image/jpeg`, `image/png`, `image/webp`, `application/pdf`.
+  - Max file size: 5 MB (5,242,880 bytes).
+  - Max active attachments per ticket: 5.
+- **Response `201 Created`:**
+  ```json
+  {
+    "id": 14,
+    "ticketId": 105,
+    "originalFileName": "vpn_error.png",
+    "fileSize": 245100,
+    "mimeType": "image/png",
+    "isRemoved": false,
+    "uploadedByUserId": 1,
+    "createdAt": "2026-05-13T09:15:00.000Z"
+  }
+  ```
+- **Error Responses:**
+  - `404 Not Found`: Ticket not found or not owned by Requester.
+  - `413 Payload Too Large`: File exceeds 5 MB.
+  - `415 Unsupported Media Type`: File format not permitted.
+  - `422 Unprocessable Entity`: Ticket already has 5 active attachments.
+
+#### 3.5.2. Download Attachment
+- **Path:** `GET /api/attachments/:id/download`
+- **Description:** Streams binary file payload with original filename header.
+- **Authorization:** `REQUESTER` (if owner of parent ticket), `IT_STAFF`, `ADMINISTRATOR`
+- **Response `200 OK`:** Binary file stream with headers:
+  - `Content-Disposition: attachment; filename="vpn_error.png"`
+  - `Content-Type: image/png`
+- **Error Responses:**
+  - `404 Not Found`: Attachment does not exist or parent ticket not accessible to user.
+  - `410 Gone`: Attachment has been soft-removed.
+
+#### 3.5.3. Soft-Remove Attachment
+- **Path:** `PATCH /api/attachments/:id/soft-remove`
+- **Description:** Soft-removes an attachment with mandatory audit reason.
+- **Authorization:** `REQUESTER` (if owner of parent ticket), `IT_STAFF`, `ADMINISTRATOR`
+- **Request Body:**
+  ```json
+  {
+    "removalReason": "Uploaded incorrect log file with sensitive credentials"
+  }
+  ```
+- **Response `200 OK`:**
+  ```json
+  {
+    "id": 14,
+    "ticketId": 105,
+    "originalFileName": "vpn_error.png",
+    "isRemoved": true,
+    "removedAt": "2026-05-13T09:30:00.000Z",
+    "removalReason": "Uploaded incorrect log file with sensitive credentials"
+  }
+  ```
+- **Error Responses:**
+  - `404 Not Found`: Attachment not found or not owned.
+  - `422 Unprocessable Entity`: `removalReason` missing or shorter than 3 characters.
 
 ---
 
@@ -298,6 +375,19 @@ All error responses adhere to a consistent, safe JSON structure that never expos
   - `sortOrder` (optional string): `asc`, `desc`. Default: `desc`.
   - `page` (optional integer): Page number. Default: `1`.
   - `pageSize` (optional integer): Records per page. Default: `10`, maximum: `50`.
+
+#### Behavior for Invalid Query Parameters:
+1. **Invalid Enum Parameters (`status`, `requestedPriority`, `itPriority`):**
+   - Returns **`400 Bad Request`** with error: `{"error": "Invalid filter parameter", "details": ["Value 'XYZ' is not a valid status"]}`.
+2. **Invalid `sortBy` Field:**
+   - Returns **`400 Bad Request`** with error: `{"error": "Invalid sort field", "details": ["Allowed fields: createdAt, updatedAt, ticketNumber, itPriority, status"]}`.
+3. **Invalid `sortOrder`:**
+   - Falls back safely to default (`desc`).
+4. **Invalid Numeric Parameters (`page`, `pageSize`, `categoryId`):**
+   - Non-integer or negative `page` / `pageSize` values return **`400 Bad Request`** (`{"error": "Invalid pagination parameter"}`).
+   - `pageSize` values exceeding `50` are automatically clamped to `50`.
+   - Non-existent `categoryId` returns empty result array with `total: 0`.
+
 - **Response `200 OK`:**
   ```json
   {
@@ -333,9 +423,11 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 
 ### 4.2. Retrieve Ticket for IT Staff Operations
 - **Path:** `GET /api/staff/tickets/:id`
-- **Description:** Retrieves full operational ticket details, including Requester info, attachments, public comments, and internal notes.
+- **Description:** Retrieves full operational ticket details, including Requester profile, attachments, public comments, internal notes, and requester resolution flag.
 - **Authorization:** `IT_STAFF`, `ADMINISTRATOR`
 - **Response `200 OK`:** Full ticket record with nested requester, owner, category, system, comments, notes, and attachments.
+- **Error Responses:**
+  - `404 Not Found`: Ticket does not exist.
 
 ---
 
@@ -521,6 +613,9 @@ All error responses adhere to a consistent, safe JSON structure that never expos
     }
   }
   ```
+- **Error Responses:**
+  - `403 Forbidden`: Authenticated user is a `REQUESTER`.
+  - `422 Unprocessable Entity`: Content empty, whitespace-only, or exceeding 2,000 characters.
 
 ---
 
@@ -529,7 +624,7 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 ### 6.1. Retrieve User List
 - **Path:** `GET /api/admin/users`
 - **Description:** Retrieves all users with search and role filtering.
-- **Authorization:** `ADMINISTRATOR`
+- **Authorization:** `ADMINISTRATOR` (Requesters and IT Staff receive `403 Forbidden`)
 - **Query Parameters:**
   - `search` (optional string): Substring match on `name` or `email`.
   - `role` (optional Role enum): Filter by `REQUESTER`, `IT_STAFF`, or `ADMINISTRATOR`.

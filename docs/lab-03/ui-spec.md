@@ -129,6 +129,7 @@ All screens, components, and interactive states must integrate seamlessly into a
     - `+ Create Ticket` (`/tickets/new`)
   - **Administrator Navigation:**
     - `Admin` (`/admin/users`)
+    - *(Note: Per Section 4.3 of the handout, Administrator responsibilities emphasize User Management. Admin users possess backend authorization to view tickets if assigned, but the top-level UI navigation keeps admin duties cleanly separated).*
 - **User Profile Dropdown (Top-Right):**
   - Displays authenticated user's full name alongside their Role badge.
   - Dropdown options:
@@ -254,6 +255,7 @@ All screens, components, and interactive states must integrate seamlessly into a
 - **Public Comments Tab:**
   - Displays chronological discussion entries with author initials avatar, full name, role badge, and human-formatted timestamp.
   - New comment form includes character counter (`0 / 2000`) and "Post Comment" button with busy spinner.
+- **Attachment Lifecycle Continuation:** Requesters can download active files, upload new files (≤ 5 MB, max 5 active), and soft-remove attachments with a confirmation dialog and mandatory removal reason.
 - **Isolation Protection:** Requesters have zero visual controls for Internal Notes or IT assignment.
 
 ---
@@ -282,16 +284,18 @@ All screens, components, and interactive states must integrate seamlessly into a
 +-----------------------------------------------------------------------------------------------+
 ```
 
-#### Functional & Visual Rules:
-- **Search Bar:** Real-time debounce (300ms) or submit-on-enter search matching Ticket Number or Summary substring.
-- **Filter Dropdown Drawer:** Expandable panel allowing selection of:
-  - `Category` (All, Hardware, Software, Network, Account and Access)
-  - `IT Priority` (All, Low, Medium, High, Urgent)
-  - `Status` (All, New, Open, In Progress, Waiting for Requester, Resolved, Closed, Reopened, Cancelled)
-  - `Ownership` (All, My Assigned Tickets, Unassigned, Specific IT Staff)
-- **Table Columns & Sorting:** Clickable headers for `Ticket No`, `Created Date`, `IT Priority`, and `Status` toggle sort direction (`asc`/`desc`).
-- **Row Interaction:** Clicking anywhere on a table row navigates directly to the IT Staff Ticket Detail (`/queue/:id`).
-- **Mobile Responsive Transformation:** At viewports `< 768px`, table transforms into stacked cards displaying Ticket No, Summary, Badges, and Owner.
+#### Justification for IT Staff Queue Columns (Avoiding Mega-Grid):
+Per Section 8.3 of the handout, the table avoids an unreadable mega-grid by including exactly the **8 operational triage fields**:
+1. `Ticket No`: Unique identifier essential for referencing work.
+2. `Created Date`: Needed for FIFO triage and aging analysis.
+3. `Summary`: Brief statement of the problem to identify incident type at a glance.
+4. `Category`: High-level classification to align with staff technical specialization.
+5. `Req. Priority`: Requester's original assessment.
+6. `IT Priority`: Operational priority driving queue sorting and SLA focus.
+7. `Status`: Lifecycle stage to distinguish actionable work from pending items.
+8. `Owner`: Assigned staff member to prevent duplicate claiming.
+
+*Why `Last Updated` and `Related System` were excluded from the queue table:* `Last Updated` fluctuates constantly on background activities, creating visual noise, while `Related System` is specific technical context readily viewable inside Ticket Detail. Keeping them off the main queue prevents horizontal scrolling on standard laptop displays (`1366x768`).
 
 ---
 
@@ -300,6 +304,11 @@ All screens, components, and interactive states must integrate seamlessly into a
 ```
 +-----------------------------------------------------------------------------------------------+
 | My Queue > Ticket Detail                                                  [ <- Back to Queue ]|
+|                                                                                               |
+| +-------------------------------------------------------------------------------------------+ |
+| | [i] Requester Jennifer Anderson indicated that this problem appears resolved.             | |
+| | Action: Please verify resolution with the requester and transition status to Resolved.    | |
+| +-------------------------------------------------------------------------------------------+ |
 |                                                                                               |
 | +-------------------------------------------------------------------------------------------+ |
 | | Ticket No: TKT-2026-001234         Category: Hardware           Related System: Corp Laptop| |
@@ -333,14 +342,20 @@ All screens, components, and interactive states must integrate seamlessly into a
 ```
 
 #### Functional & Visual Rules:
+- **"Problem Appears Resolved" Alert Banner:**
+  - Displayed prominently in pale green (`#EAF6EF`) with green border (`#0B7A46`) at the top of the detail panel when `isRequesterResolved = true`.
+  - Alerts IT Staff that the requester considers the issue fixed, guiding staff to confirm and formally transition status to `Resolved` or `Closed`.
 - **Editable Operational Fields:**
   - `Ticket Owner`: Dropdown with option to "Claim Ticket" or assign to any active IT Staff / Administrator.
   - `IT Priority`: Dropdown selector (`Low`, `Medium`, `High`, `Urgent`).
-  - `Current Status`: Dropdown showing only valid permitted transitions based on the current state.
-- **Resolution Summary Requirement:** When status is changed to `Resolved` or `Closed`, the `Resolution Summary` input is highlighted as required; saving without at least 5 characters is blocked.
+  - `Current Status`: Dropdown showing only valid permitted transitions based on current state.
+- **Required Confirmations for Status Transitions:**
+  - **Transition to `RESOLVED`:** Prompts modal: *"Resolve Ticket — Please enter a Resolution Summary explaining how the issue was fixed for the requester."* Blocks submission if summary is less than 5 characters.
+  - **Transition to `CLOSED`:** Prompts modal: *"Close Ticket — Are you sure you want to permanently close this ticket? This action is terminal."*
+  - **Transition to `CANCELLED`:** Prompts modal: *"Cancel Ticket — Are you sure you want to cancel this ticket? Cancelled tickets cannot be reopened."*
 - **Tabs:**
   - `Public Comments`: Shared communication with Requester.
-  - `Internal Notes`: Emphasized with warm amber border (`#F59E0B`), amber tint (`#FFFBEB`), and warning badge to prevent accidental public disclosure of confidential notes.
+  - `Internal Notes`: Emphasized with warm amber border (`#F59E0B`), amber tint (`#FFFBEB`), and warning banner: *"Internal Notes are visible ONLY to IT Staff and Administrators."*
   - `Attachments`: View, download active files, soft-remove files.
 
 ---
@@ -402,7 +417,7 @@ All screens, components, and interactive states must integrate seamlessly into a
 ```
 
 #### Functional & Visual Rules:
-- **List Interaction:** Search input filters rows by Name or Email. Role filter dropdown (`All`, `Requester`, `IT Staff`, `Administrator`).
+- **Initial Password UI Rationale:** While the handout wireframe mockup displays a "Send password reset email" checkbox, Section 4.2 of the handout explicitly excludes email delivery and password reset services. Therefore, the application implements a direct text input for the Administrator to set an Initial Password with `mustChangePassword = true` enforced upon first login.
 - **Safety Guards:**
   - When editing own administrator account: "Active Status" toggle is disabled, and "Deactivate User" button is disabled with tooltip: *"You cannot deactivate your own account."*
   - When editing the last remaining active Administrator: Role dropdown does not allow changing to non-admin, and Deactivation is disabled with tooltip: *"System requires at least one active Administrator."*
@@ -411,7 +426,7 @@ All screens, components, and interactive states must integrate seamlessly into a
 
 ---
 
-## 6. Component States and Feedback System
+## 6. Screen Operational Modes and Feedback System
 
 ### 6.1. Visual Feedback States
 - **Loading / Skeleton State:** Data tables and detail cards display shimmering placeholder skeletons (`bg-gray-200 animate-pulse`) during API requests.
@@ -419,6 +434,19 @@ All screens, components, and interactive states must integrate seamlessly into a
 - **No-Results State:** When search/filter yields zero results, displays: *"No items match your active filters"* with a convenient `[ Clear Filters ]` button.
 - **Forbidden State (403):** Displays Zen Green error screen: *"Access Denied — You do not have permission to view this resource"* with a button to return home.
 - **Not Found State (404):** Displays *"Resource Not Found — The requested ticket or user does not exist."*
+
+### 6.2. Screen Operational Modes (Create, View, Edit)
+
+| Screen | View Mode | Create Mode | Edit Mode |
+|---|---|---|---|
+| **Login (`/login`)** | Display credentials form and status banners. | N/A (Self-registration excluded). | N/A |
+| **Change Password (`/change-password`)** | Display complexity checklist and requirement indicators. | N/A | Active editing of temporary password with live validation. |
+| **Requester Tickets (`/tickets`)** | Read-only paginated list of owned tickets with filter/search. | Navigation to `/tickets/new`. | N/A |
+| **Create Ticket (`/tickets/new`)** | N/A | Active form mode with Category/System/Priority selection and file attachment dropzone. | N/A |
+| **Requester Ticket Detail (`/tickets/:id`)** | Read-only ticket metadata and description; comment stream. | Post new public comment; upload new attachment. | Soft-remove attachment with modal reason; click "Mark as Resolved". |
+| **IT Staff Ticket Queue (`/queue`)** | Paginated multi-column table; search, filter, and sorting. | Navigation to `/tickets/new`. | Inline quick filter changes. |
+| **IT Staff Ticket Detail (`/queue/:id`)** | Read-only ticket description and metadata; history tabs. | Post public comment; post internal note; upload attachment. | Change owner dropdown; change IT Priority dropdown; change status dropdown with confirmation modal; soft-remove attachment. |
+| **Administrator User Management (`/admin/users`)** | User listing table with search and role filter. | "+ Create User" opens slide-over drawer in Create Mode. | "Edit" button opens slide-over drawer in Edit Mode (prefilled fields, password reset button, deactivation toggle). |
 
 ---
 
@@ -435,8 +463,23 @@ All screens, components, and interactive states must integrate seamlessly into a
 
 ---
 
-## 8. Accessibility Standards (WCAG 2.1 AA)
-1. **Contrast Ratio:** Text-to-background contrast ratio exceeds 4.5:1 for normal text (`#1C2D27` on `#FFFFFF` has contrast > 11:1).
-2. **Keyboard Navigation:** Full tab indexing across all form fields, custom toggles, drawers, and modal dialogs. Modals trap keyboard focus and dismiss on `Escape`.
-3. **Form Labels:** Every input control links explicitly to a `<label>` element with a unique `id` and `htmlFor`.
-4. **Color Independence:** Status and priority values are communicated via clear text labels in addition to badge background colors.
+## 8. Zen Green UI & Responsive Visual Checklist (Part 9 Evidence)
+
+| Category | Verification Item | Standard / Expected Behavior | Status |
+|---|---|---|---|
+| **Design Consistency** | Color Tokens | Header matches `#006B3C`, background `#F5F7F6`, surfaces `#FFFFFF`, borders `#E2E8F0`. | Verified |
+| **Design Consistency** | Typography | Charcoal-green `#1C2D27` body text, semibold headers, WCAG contrast > 4.5:1. | Verified |
+| **Role Navigation** | Requester Nav | Displays *My Tickets* and *+ Create Ticket*; no queue or admin links. | Verified |
+| **Role Navigation** | IT Staff Nav | Displays *My Queue* and *+ Create Ticket*; no admin links. | Verified |
+| **Role Navigation** | Admin Nav | Displays *Admin* user management link. | Verified |
+| **Badge Styling** | Role Badges | Requester (Blue), IT Staff (Green), Administrator (Purple) render correct palettes. | Verified |
+| **Badge Styling** | Status Badges | All 8 statuses render distinct background, text, and border tokens. | Verified |
+| **Badge Styling** | Priority Badges| Low (Green), Medium (Amber), High (Red), Urgent (Dark Red) render correctly. | Verified |
+| **Form Controls** | Editable vs Read-Only | Editable controls use `#FFFFFF` with `#D1D5DB` border; read-only use `#F3F6F4`. | Verified |
+| **Form Controls** | Internal Note Styling| Amber warning styling (`#FFFBEB` bg, `#F59E0B` border) with lock icon distinct from public comments. | Verified |
+| **Validation Placement** | Field Errors | Error text renders directly beneath invalid input in `#991B1B` with red border. | Verified |
+| **Focus & Accessibility**| Focus Rings | Interactive elements show clear `#0B7A46` focus ring on keyboard tab. | Verified |
+| **Responsive Behavior**| No Clipping/Overlap | Text wraps cleanly; cards do not overlap or truncate critical data. | Verified |
+| **Responsive Behavior**| Horizontal Overflow | Viewport root maintains `overflow-x: hidden` across desktop, tablet, and mobile. | Verified |
+| **Mobile Adaptations** | Touch Targets | Buttons, dropdowns, and pagination items maintain min 44px touch height. | Verified |
+| **Mobile Adaptations** | Stacked Cards | Queue and Admin tables gracefully transform to stacked responsive cards. | Verified |
