@@ -50,7 +50,7 @@ Authorization: Bearer <jwt-token>
 | `GET /api/tickets` (My Tickets) | Allowed (Own only) | Forbidden (403) | Forbidden (403) |
 | `GET /api/tickets/:id` (Requester Detail) | Allowed (Own only; 404 if not owned) | Forbidden (403) | Forbidden (403) |
 | `PATCH /api/tickets/:id/resolve-indication` | Allowed (Own only) | Forbidden (403) | Forbidden (403) |
-| `POST /api/tickets/:id/attachments` (Upload) | Allowed (Own only) | Allowed (Own only) | Forbidden (403) |
+| `POST /api/tickets/:id/attachments` (Upload) | Allowed (Own only) | Allowed | Allowed |
 | `GET /api/attachments/:id/download` (Download) | Allowed (Own only) | Allowed | Allowed |
 | `PATCH /api/attachments/:id/soft-remove` (Remove) | Allowed (Own only) | Allowed | Allowed |
 | `GET /api/staff/tickets` (Queue) | Forbidden (403) | Allowed | Allowed |
@@ -293,8 +293,8 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 
 #### 3.5.1. Upload Attachment
 - **Path:** `POST /api/tickets/:id/attachments`
-- **Description:** Uploads an attachment to an owned ticket under the authenticated user session.
-- **Authorization:** `REQUESTER` (owned ticket only), `IT_STAFF` (owned ticket only)
+- **Description:** Uploads an attachment to a ticket under the authenticated user session. Requesters may upload to owned tickets; IT Staff and Administrators may upload to any ticket in the system to attach logs, screenshots, or diagnostics.
+- **Authorization:** `REQUESTER` (owned ticket only), `IT_STAFF` (all tickets), `ADMINISTRATOR` (all tickets)
 - **Content-Type:** `multipart/form-data`
 - **Form Field:** `file` (binary stream)
 - **Validation Rules:**
@@ -317,7 +317,7 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 - **Error Responses:**
   - `400 Bad Request`: Missing file payload.
   - `401 Unauthorized`: Missing or invalid token.
-  - `404 Not Found`: Ticket does not exist or not owned by Requester.
+  - `404 Not Found`: Ticket does not exist (or cross-requester resource masked for privacy).
   - `413 Payload Too Large`: File exceeds 5 MB limit.
   - `415 Unsupported Media Type`: File format not permitted.
   - `422 Unprocessable Entity`: Ticket already has 5 active attachments.
@@ -488,7 +488,15 @@ All error responses adhere to a consistent, safe JSON structure that never expos
 
 ### 4.5. Update Ticket Status
 - **Path:** `PATCH /api/staff/tickets/:id/status`
-- **Description:** Progresses ticket status strictly according to the approved state transition matrix.
+- **Description:** Progresses ticket status strictly according to the approved state transition matrix:
+  - `NEW` → `OPEN`, `IN_PROGRESS`, `CANCELLED`
+  - `OPEN` → `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`
+  - `IN_PROGRESS` → `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`
+  - `WAITING_FOR_REQUESTER` → `IN_PROGRESS`, `RESOLVED`, `CANCELLED`
+  - `RESOLVED` → `CLOSED`, `REOPENED`
+  - `REOPENED` → `IN_PROGRESS`, `RESOLVED`, `CANCELLED`
+  - `CLOSED` → `REOPENED` (permitted exclusively for `IT_STAFF` and `ADMINISTRATOR` with confirmation and rationale; otherwise terminal)
+  - `CANCELLED` → Terminal (no transitions permitted)
 - **Authorization:** `IT_STAFF`, `ADMINISTRATOR`
 - **Request Body:**
   ```json
@@ -497,6 +505,7 @@ All error responses adhere to a consistent, safe JSON structure that never expos
     "resolutionSummary": "Reconfigured client IPsec routing policy."
   }
   ```
+  *(Note on `resolutionSummary`: Mandatory with 5–1,000 characters when transitioning to `RESOLVED`. When transitioning from `RESOLVED` to `CLOSED`, `resolutionSummary` is optional; if omitted, the backend automatically preserves the existing summary on the ticket. If provided, it updates the summary).*
 - **Response `200 OK`:**
   ```json
   {
@@ -508,7 +517,11 @@ All error responses adhere to a consistent, safe JSON structure that never expos
   }
   ```
 - **Error Responses:**
-  - `422 Unprocessable Entity`: Invalid status transition or missing mandatory `resolutionSummary` when resolving/closing.
+  - `400 Bad Request`: Invalid status value.
+  - `401 Unauthorized`: Missing or invalid token.
+  - `403 Forbidden`: Authenticated user lacks `IT_STAFF` or `ADMINISTRATOR` role.
+  - `404 Not Found`: Ticket does not exist.
+  - `422 Unprocessable Entity`: Invalid status transition or missing mandatory `resolutionSummary` when transitioning to `RESOLVED`.
 
 ---
 

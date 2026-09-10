@@ -146,8 +146,8 @@ Key expectations:
 | **BR-11** | **IT Priority Decoupling** | Upon ticket creation, `itPriority` is automatically initialized with the Requester's `requestedPriority`. Subsequent modifications to `itPriority` can only be performed by IT Staff or Administrators. |
 | **BR-12** | **Append-Only Communication Records** | Public Comments and Internal Notes are strictly append-only. No user (including Administrators) can edit or delete an existing comment or note. The backend automatically binds `authorId = currentUser.id` and `createdAt = now()`. |
 | **BR-13** | **Comment & Note Content Validation** | Public Comments and Internal Notes must contain between 1 and 2,000 characters after whitespace trimming. Empty or whitespace-only submissions must be rejected with HTTP 422 Unprocessable Entity. Output must be sanitized to prevent Cross-Site Scripting (XSS). |
-| **BR-14** | **Permitted Status Transitions & Confirmations** | Ticket status changes must follow the authorized lifecycle rules: <br>• `NEW` → `OPEN`, `IN_PROGRESS`, `CANCELLED`<br>• `OPEN` → `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`<br>• `IN_PROGRESS` → `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `WAITING_FOR_REQUESTER` → `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `RESOLVED` → `CLOSED`, `REOPENED`<br>• `REOPENED` → `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `CLOSED` → Terminal (no transitions permitted)<br>• `CANCELLED` → Terminal (no transitions permitted)<br>Only IT Staff and Administrators may execute status transitions. Direct jumps outside this matrix must be rejected with HTTP 422. <br>**Required Confirmations:** Progressing a ticket to terminal/irreversible statuses (`CANCELLED`, `CLOSED`) or `RESOLVED` explicitly mandates a confirmation modal in the UI. Transitioning to `RESOLVED` requires a non-empty `resolutionSummary`. |
-| **BR-15** | **Resolution Summary Requirement** | Transitioning a ticket to `RESOLVED` or `CLOSED` requires a non-empty `resolutionSummary` (minimum 5 characters, maximum 1,000 characters) explaining the resolution. |
+| **BR-14** | **Permitted Status Transitions & Confirmations** | Ticket status changes must follow the authorized lifecycle rules: <br>• `NEW` → `OPEN`, `IN_PROGRESS`, `CANCELLED`<br>• `OPEN` → `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`<br>• `IN_PROGRESS` → `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `WAITING_FOR_REQUESTER` → `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `RESOLVED` → `CLOSED`, `REOPENED`<br>• `REOPENED` → `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `CLOSED` → `REOPENED` (permitted exclusively for IT Staff and Administrators with confirmation dialog and rationale; otherwise terminal)<br>• `CANCELLED` → Terminal (no transitions permitted)<br>Only IT Staff and Administrators may execute status transitions. Direct jumps outside this matrix must be rejected with HTTP 422. <br>**Required Confirmations:** Progressing a ticket to `CANCELLED`, `CLOSED`, `RESOLVED`, or `REOPENED` explicitly mandates a confirmation modal in the UI. Transitioning to `RESOLVED` requires a non-empty `resolutionSummary`. |
+| **BR-15** | **Resolution Summary Requirement** | Transitioning a ticket to `RESOLVED` requires a non-empty `resolutionSummary` (minimum 5 characters, maximum 1,000 characters) explaining the resolution. Transitioning from `RESOLVED` to `CLOSED` automatically retains the existing `resolutionSummary` stored on the ticket if not re-submitted, and optionally allows IT Staff to update it in the closure confirmation modal. |
 | **BR-16** | **Self-Deactivation Protection** | An Administrator cannot deactivate their own user account or change their own role away from `ADMINISTRATOR`. Such attempts must be rejected with HTTP 422 Unprocessable Entity. |
 | **BR-17** | **Last Active Administrator Protection** | The system must prevent deactivating or reassigning the role of the last remaining active Administrator in the database. Any action that would reduce the active Administrator count to zero must be rejected with HTTP 422 Unprocessable Entity. |
 | **BR-18** | **Account Deactivation Over Deletion** | User accounts are never physically deleted from the database (`User.delete` is disabled). Inactive accounts (`isActive = false`) are preserved to maintain foreign key integrity with historical tickets, comments, notes, and attachments. |
@@ -155,6 +155,7 @@ Key expectations:
 | **BR-20** | **Form State Retention on API Failure** | When form submissions fail on any screen (Login, Password Change, Create User, Edit User, Post Comment, Note, or Status Change), all entered input values must remain intact in the UI controls to prevent data loss. |
 | **BR-21** | **Current User Context & Active Session Validation** | `GET /api/auth/me` resolves identity from the verified session/token. If an account has been deactivated (`isActive = false`) after token issuance, subsequent API requests must be rejected immediately with HTTP 403 Forbidden. |
 | **BR-22** | **Lab 2 Functional Regression Integrity** | All completed Lab 2 ticket submission, category/system listing, attachment upload, download, and soft-remove capabilities must continue functioning identically under the authenticated `User` model without the mock Development Requester selector. |
+| **BR-23** | **IT Staff & Administrator Attachment Management** | IT Staff and Administrators may upload attachments (diagnostics, logs, screenshots, patches up to 5 MB, max 5 active) to any ticket they are managing in the IT Staff queue. The backend binds `uploadedByUserId = currentUser.id` and enforces identical MIME type, file size, and soft-removal policies. |
 
 ---
 
@@ -361,39 +362,48 @@ model InternalNote {
    - Add `passwordHash VARCHAR(255) NOT NULL`.
    - Add `role VARCHAR(50) NOT NULL DEFAULT 'REQUESTER'`.
    - Add `mustChangePassword BOOLEAN NOT NULL DEFAULT false`.
-3. **Data Preservation & Role Mapping:** Existing Lab 2 users are migrated to the `User` model with roles assigned appropriately and receive initial bcrypt passwords with `mustChangePassword = true` and harmonized `@toktickit.com` email addresses:
-   - `Jennifer Anderson` (`janderson@toktickit.com`) $\rightarrow$ Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`
-   - `Michael Brown` (`mbrown@toktickit.com`) $\rightarrow$ Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`
-   - `David Lee` (`dlee@toktickit.com`) $\rightarrow$ Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`
-   - `Sarah Johnson` (`sjohnson@toktickit.com`) $\rightarrow$ Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`
-   - `Alex Inactive` (`alex.inactive@toktickit.com`) $\rightarrow$ Role: `REQUESTER`, `isActive: false`, Password: `Password123!`
-   - `John Smith` (`admin@toktickit.com`) $\rightarrow$ Role: `ADMINISTRATOR`, Password: `AdminPass123!`, `mustChangePassword: false`
+3. **Data Preservation & Role Mapping (Zero-Regression Guarantee):** To guarantee 100% backward compatibility and prevent regression failures across the 43 existing automated test suites in `server/tests/lab-02/` (which hardcode queries for `@kmutt.ac.th` emails such as `jennifer.anderson@kmutt.ac.th` and rely on `david.lee@kmutt.ac.th` as a Requester for isolation testing), all 5 original Lab 2 users are migrated to the `User` model with role **`REQUESTER`** and retain their original `@kmutt.ac.th` email addresses:
+   - `Jennifer Anderson` (`jennifer.anderson@kmutt.ac.th`) $\rightarrow$ Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`
+   - `David Lee` (`david.lee@kmutt.ac.th`) $\rightarrow$ Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`
+   - `Sarah Johnson` (`sarah.johnson@kmutt.ac.th`) $\rightarrow$ Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`
+   - `Michael Brown` (`michael.brown@kmutt.ac.th`) $\rightarrow$ Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`
+   - `Alex Inactive` (`alex.inactive@kmutt.ac.th`) $\rightarrow$ Role: `REQUESTER`, `isActive: false`, Password: `Password123!`
+   Dedicated accounts with `@toktickit.com` domains are provisioned for `IT_STAFF` and `ADMINISTRATOR` roles.
 4. **Ticket & Attachment Schema Evolution:**
    - Foreign key `requesterId` in `tickets` is rebound to `users(id)`.
    - In `attachments`, column `uploadedByRequesterId` is renamed to `uploadedByUserId` referencing `users(id)`.
    - Add `ticketOwnerId INT NULL REFERENCES users(id) ON DELETE SET NULL`.
    - Add `isRequesterResolved BOOLEAN NOT NULL DEFAULT false`.
-   - Migrate enum `TicketStatus`: Rename `PENDING` to `WAITING_FOR_REQUESTER`, add `REOPENED` and `CANCELLED`.
+   - **PostgreSQL Enum Migration Strategy:** Renaming `PENDING` to `WAITING_FOR_REQUESTER` in PostgreSQL cannot be performed automatically by Prisma schema diffing without dropping or rebuilding types, which would fail or corrupt historical tickets. A custom SQL migration file (`server/prisma/migrations/..._evolve_ticket_status/migration.sql`) must be executed using:
+     ```sql
+     -- Step 1: Safely rename legacy PENDING enum value to WAITING_FOR_REQUESTER
+     ALTER TYPE "TicketStatus" RENAME VALUE 'PENDING' TO 'WAITING_FOR_REQUESTER';
+
+     -- Step 2: Add new status values to the enum
+     ALTER TYPE "TicketStatus" ADD VALUE IF NOT EXISTS 'REOPENED';
+     ALTER TYPE "TicketStatus" ADD VALUE IF NOT EXISTS 'CANCELLED';
+     ```
 5. **New Communication Tables:** Create `public_comments` and `internal_notes` tables with indexes on `[ticketId, createdAt]`.
 6. **Removal of Development Selector State:** Client-side local storage keys for mock requesters (`mockRequesterId`) are permanently deprecated and removed.
 
 ### 7.3. Idempotent Seed Data (`server/prisma/seed.ts`)
 The seed script uses `upsert` operations ensuring repeated runs produce identical database states.
-- **Requester Accounts (4 Active, 1 Inactive):**
-  1. `janderson@toktickit.com` (Active, Jennifer Anderson, Password: `Password123!`, `mustChangePassword: false`)
-  2. `edavis@toktickit.com` (Active, Emily Davis, Password: `Password123!`, `mustChangePassword: false`)
-  3. `aclark@toktickit.com` (Active, Amanda Clark, Password: `Password123!`, `mustChangePassword: false`)
-  4. `firstlogin.requester@toktickit.com` (Active, FirstLogin Requester, Password: `InitialPass123!`, `mustChangePassword: true` - for testing first login)
-  5. `alex.inactive@toktickit.com` (Inactive, Alex Inactive, `isActive: false`, Password: `Password123!`)
-- **IT Staff Accounts (3 Active, 1 Inactive):**
-  1. `mbrown@toktickit.com` (Active, IT Staff, Michael Brown, Password: `Password123!`, `mustChangePassword: false`)
-  2. `sjohnson@toktickit.com` (Active, IT Staff, Sarah Johnson, Password: `Password123!`, `mustChangePassword: false`)
-  3. `dlee@toktickit.com` (Active, IT Staff, David Lee, Password: `InitialPass123!`, `mustChangePassword: true` - for testing first login)
-  4. `kpatel@toktickit.com` (Inactive, IT Staff, Kevin Patel, `isActive: false`, Password: `Password123!`)
+- **Requester Accounts (4 Active, 1 Inactive - Preserved from Lab 2):**
+  1. `jennifer.anderson@kmutt.ac.th` (Active, Jennifer Anderson, Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`)
+  2. `david.lee@kmutt.ac.th` (Active, David Lee, Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`)
+  3. `sarah.johnson@kmutt.ac.th` (Active, Sarah Johnson, Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`)
+  4. `michael.brown@kmutt.ac.th` (Active, Michael Brown, Role: `REQUESTER`, Password: `Password123!`, `mustChangePassword: false`)
+  5. `alex.inactive@kmutt.ac.th` (Inactive, Alex Inactive, Role: `REQUESTER`, `isActive: false`, Password: `Password123!`)
+  6. `firstlogin.requester@toktickit.com` (Active, FirstLogin Requester, Role: `REQUESTER`, Password: `InitialPass123!`, `mustChangePassword: true` - for testing first login)
+- **IT Staff Accounts (3 Active, 1 Inactive - Dedicated Operational Accounts):**
+  1. `staff.michael@toktickit.com` (Active, IT Staff, Michael Brown, Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`)
+  2. `staff.sarah@toktickit.com` (Active, IT Staff, Sarah Johnson, Role: `IT_STAFF`, Password: `Password123!`, `mustChangePassword: false`)
+  3. `staff.david@toktickit.com` (Active, IT Staff, David Lee, Role: `IT_STAFF`, Password: `InitialPass123!`, `mustChangePassword: true` - for testing first login)
+  4. `kpatel@toktickit.com` (Inactive, IT Staff, Kevin Patel, Role: `IT_STAFF`, `isActive: false`, Password: `Password123!`)
 - **Administrator Accounts (1 Active):**
-  1. `admin@toktickit.com` (Active, Administrator, John Smith, Password: `AdminPass123!`, `mustChangePassword: false`)
+  1. `admin@toktickit.com` (Active, Administrator, John Smith, Role: `ADMINISTRATOR`, Password: `AdminPass123!`, `mustChangePassword: false`)
 - **Categories & Systems:** Retains Lab 2's 4 active categories and 7 related systems.
-- **Realistic Ticket Distribution:** Seed at least 10 realistic tickets distributed across Requesters and covering **all 8 statuses** (`NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CLOSED`, `REOPENED`, `CANCELLED`), priorities, and assigned ownership (`mbrown@toktickit.com` or unassigned).
+- **Realistic Ticket Distribution:** Seed at least 10 realistic tickets distributed across Requesters and covering **all 8 statuses** (`NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CLOSED`, `REOPENED`, `CANCELLED`), priorities, and assigned ownership (`staff.michael@toktickit.com` or unassigned).
 - **Public Comments & Internal Notes:** Seed realistic comments and internal notes on assigned tickets illustrating communication threads.
 
 ---
@@ -413,7 +423,7 @@ Full schemas, parameters, and error formats are specified in `docs/lab-03/api-sp
 | `GET` | `/api/tickets` | List tickets owned by authenticated Requester | `REQUESTER` |
 | `GET` | `/api/tickets/:id` | Retrieve single owned ticket detail (404 if not owned) | `REQUESTER` (owner only) |
 | `PATCH` | `/api/tickets/:id/resolve-indication`| Requester indicates problem appears resolved | `REQUESTER` (owner only) |
-| `POST` | `/api/tickets/:id/attachments` | Upload attachment to owned ticket | `REQUESTER` (owner), `IT_STAFF` (owner) |
+| `POST` | `/api/tickets/:id/attachments` | Upload attachment to ticket | `REQUESTER` (owner), `IT_STAFF`, `ADMINISTRATOR` |
 | `GET` | `/api/attachments/:id/download`| Download active attachment | `REQUESTER` (owner), `IT_STAFF`, `ADMINISTRATOR` |
 | `PATCH` | `/api/attachments/:id/soft-remove`| Soft-remove attachment with mandatory reason | `REQUESTER` (owner), `IT_STAFF`, `ADMINISTRATOR` |
 | `GET` | `/api/staff/tickets` | Retrieve shared IT ticket queue (search, filter, sort, page) | `IT_STAFF`, `ADMINISTRATOR` |
@@ -495,9 +505,9 @@ Full schemas, parameters, and error formats are specified in `docs/lab-03/api-sp
   - *Then* `itPriority` is updated in the database while `requestedPriority` remains `MEDIUM`.
 
 - **AC-13 (Permitted Ticket Status Transition Enforcement):**
-  - *Given* a ticket with status `NEW`,
-  - *When* an IT Staff user transitions the status to `IN_PROGRESS`,
-  - *Then* the transition succeeds; but attempting a direct transition from `NEW` to `CLOSED` is rejected with HTTP 422 Unprocessable Entity. Transitioning to `RESOLVED` requires a confirmation modal and non-empty `resolutionSummary`.
+  - *Given* a ticket in the IT Staff queue,
+  - *When* an IT Staff user transitions status following permitted paths (`NEW` → `IN_PROGRESS`, `RESOLVED` → `CLOSED`, or `CLOSED` → `REOPENED`),
+  - *Then* the transition succeeds with appropriate confirmation; but attempting a direct transition from `NEW` to `CLOSED` is rejected with HTTP 422 Unprocessable Entity. Transitioning to `RESOLVED` requires a non-empty `resolutionSummary`, which is preserved upon subsequent transition to `CLOSED`. Reopening a closed ticket requires IT Staff or Administrator authorization and a confirmation dialog.
 
 - **AC-14 (Public Comments Collaboration):**
   - *Given* an open ticket,
@@ -592,3 +602,6 @@ Full schemas, parameters, and error formats are specified in `docs/lab-03/api-sp
 4. **Append-Only Communication:** Comments and notes cannot be updated or deleted to maintain strict audit integrity.
 5. **Administrator UI Scope vs. API Authority:** Per Section 4.3 of the handout, Administrator and IT Staff responsibilities remain conceptually separate in the UI shell (Admins manage user accounts; IT Staff manage tickets). Administrators possess backend API authorization for ticket queue endpoints (and can be assigned as ticket owners per Section 4.5), but the Admin UI application shell intentionally provides only the User Management interface to maintain clean role boundaries.
 6. **Initial Password UI Decision:** While the handout wireframe mockup displays a "Send password reset email" checkbox, Section 4.2 of the handout explicitly excludes email delivery and password reset services. Therefore, the application implements a direct input for the Administrator to set an Initial Password with `mustChangePassword = true` enforced upon first login.
+7. **IT Staff & Administrator Attachment Upload Capability (Option B):** While the minimum PDF requirements in Section 4.3 emphasize Requester attachment submission and Section 8.4 specifies viewing "existing Attachments", the specification intentionally extends `POST /api/tickets/:id/attachments` to IT Staff and Administrators. This enables support personnel to attach diagnostic logs, screenshots of fixes, or vendor guides directly to tickets they are troubleshooting in the queue, ensuring operational flexibility.
+8. **Ticket Reopening Lifecycle (`CLOSED -> REOPENED`):** Per Section 4.5 of the handout, students are tasked with defining the transition matrix. To provide operational realism for cases where a resolved and closed problem resurfaces, `CLOSED -> REOPENED` is supported exclusively for IT Staff and Administrators with a mandatory confirmation dialog and reason, avoiding the need for users to submit redundant duplicate tickets.
+9. **Dual-Domain Seed Strategy for Zero Test Regression:** To guarantee that all 43 automated regression tests from Lab 2 (`server/tests/lab-02/`) pass without modification, the 5 original Lab 2 users retain their `@kmutt.ac.th` emails and `REQUESTER` role. New operational staff and administrator accounts are seeded under `@toktickit.com`, perfectly satisfying both the Lab 2 regression test requirements and the Lab 3 UI mockup conventions.

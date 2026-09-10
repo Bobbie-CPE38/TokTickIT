@@ -351,12 +351,13 @@ Per Section 8.3 of the handout, the IT Staff Ticket Queue strictly selects **8 e
   - `Current Status`: Dropdown showing only valid permitted transitions based on current state.
 - **Required Confirmations for Status Transitions:**
   - **Transition to `RESOLVED`:** Prompts confirmation modal requiring `Resolution Summary` (min 5 chars). Blocks submission if empty.
-  - **Transition to `CLOSED`:** Prompts modal: *"Close Ticket — Are you sure you want to permanently close this ticket? This action is terminal."*
+  - **Transition to `CLOSED`:** Prompts confirmation modal: *"Close Ticket — Confirm closing this ticket."* Displays the current `Resolution Summary` as pre-filled/editable text so IT Staff can review or refine closing notes before finalizing.
+  - **Transition to `REOPENED`:** Prompts confirmation modal: *"Reopen Ticket — Enter rationale for reopening this ticket."* Records rationale note; available for `RESOLVED` and `CLOSED` tickets.
   - **Transition to `CANCELLED`:** Prompts modal: *"Cancel Ticket — Are you sure you want to cancel this ticket? Cancelled tickets cannot be reopened."*
 - **Tabs:**
   - `Public Comments`: Shared communication with Requester.
   - `Internal Notes`: Emphasized with warm amber border (`#F59E0B`), amber tint (`#FFFBEB`), and warning banner: *"Internal Notes are visible ONLY to IT Staff and Administrators."*
-  - `Attachments`: View, download active files, soft-remove files.
+  - `Attachments`: View and download active files, soft-remove files with mandatory audit reason, and upload new diagnostic files / screenshots (≤ 5 MB, max 5 active attachments) via dropzone or "Upload Attachment" button.
 
 ---
 
