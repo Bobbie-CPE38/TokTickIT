@@ -1,5 +1,32 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
+export class ApiError extends Error {
+  status: number;
+  details?: string[];
+  constructor(message: string, status: number, details?: string[]) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.details = details;
+  }
+}
+
+export type Role = "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR";
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+  role: Role;
+  isActive: boolean;
+  mustChangePassword: boolean;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: AuthUser;
+}
+
 export interface Category {
   id: number;
   name: string;
@@ -18,7 +45,16 @@ export interface DevelopmentRequester {
 }
 
 export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-export type TicketStatus = "NEW" | "OPEN" | "IN_PROGRESS" | "PENDING" | "RESOLVED" | "CLOSED";
+export type TicketStatus =
+  | "NEW"
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_REQUESTER"
+  | "PENDING"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED"
+  | "CANCELLED";
 
 export interface Ticket {
   id: number;
@@ -29,7 +65,9 @@ export interface Ticket {
   itPriority: Priority;
   currentStatus: TicketStatus;
   ticketOwner: string | null;
+  ticketOwnerId?: number | null;
   resolutionSummary: string | null;
+  isRequesterResolved?: boolean;
   requesterId: number;
   categoryId: number;
   relatedSystemId: number;
@@ -52,8 +90,138 @@ export interface SystemStatus {
   categories: Category[];
 }
 
+function getAuthHeaders(extraHeaders: Record<string, string> = {}, requesterId?: number): Record<string, string> {
+  const headers: Record<string, string> = { ...extraHeaders };
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("toktickit_auth_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+  if (requesterId !== undefined) {
+    headers["X-Requester-Id"] = requesterId.toString();
+  }
+  return headers;
+}
+
+// ---------------------------------------------------------------------------
+// Authentication API Functions
+// ---------------------------------------------------------------------------
+
+export async function login(email: string, password: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!res.ok) {
+    let errorMsg = "Invalid email or password. Please try again.";
+    try {
+      const data = await res.json();
+      if (data.error) errorMsg = data.error;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(errorMsg, res.status);
+  }
+
+  const data: AuthResponse = await res.json();
+  if (typeof window !== "undefined") {
+    localStorage.setItem("toktickit_auth_token", data.token);
+    localStorage.setItem("toktickit_auth_user", JSON.stringify(data.user));
+  }
+  return data;
+}
+
+export async function logout(): Promise<void> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("toktickit_auth_token") : null;
+  try {
+    if (token) {
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    }
+  } finally {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("toktickit_auth_token");
+      localStorage.removeItem("toktickit_auth_user");
+    }
+  }
+}
+
+export async function fetchCurrentUser(): Promise<AuthUser> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("toktickit_auth_token") : null;
+  if (!token) {
+    throw new ApiError("No active authentication session", 401);
+  }
+
+  const res = await fetch(`${API_URL}/api/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    let errorMsg = "Failed to load authenticated user profile";
+    try {
+      const data = await res.json();
+      if (data.error) errorMsg = data.error;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(errorMsg, res.status);
+  }
+
+  return res.json();
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string
+): Promise<{ message: string }> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("toktickit_auth_token") : null;
+  if (!token) {
+    throw new ApiError("No active authentication session", 401);
+  }
+
+  const res = await fetch(`${API_URL}/api/auth/change-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+  });
+
+  if (!res.ok) {
+    let errorMsg = "Password change failed";
+    let details: string[] | undefined;
+    try {
+      const data = await res.json();
+      if (data.error) errorMsg = data.error;
+      if (data.details) details = data.details;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(errorMsg, res.status, details);
+  }
+
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Standard Resources
+// ---------------------------------------------------------------------------
+
 export async function fetchActiveRequesters(): Promise<DevelopmentRequester[]> {
-  const res = await fetch(`${API_URL}/api/requesters/active`);
+  const res = await fetch(`${API_URL}/api/requesters/active`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     throw new Error(`Failed to load active requesters with status ${res.status}`);
   }
@@ -61,7 +229,9 @@ export async function fetchActiveRequesters(): Promise<DevelopmentRequester[]> {
 }
 
 export async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch(`${API_URL}/api/categories`);
+  const res = await fetch(`${API_URL}/api/categories`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     throw new Error(`Failed to load categories with status ${res.status}`);
   }
@@ -69,7 +239,9 @@ export async function fetchCategories(): Promise<Category[]> {
 }
 
 export async function fetchRelatedSystems(): Promise<RelatedSystem[]> {
-  const res = await fetch(`${API_URL}/api/related-systems`);
+  const res = await fetch(`${API_URL}/api/related-systems`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) {
     throw new Error(`Failed to load related systems with status ${res.status}`);
   }
@@ -78,14 +250,11 @@ export async function fetchRelatedSystems(): Promise<RelatedSystem[]> {
 
 export async function createTicket(
   payload: CreateTicketInput,
-  requesterId: number
+  requesterId?: number
 ): Promise<Ticket> {
   const res = await fetch(`${API_URL}/api/tickets`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Requester-Id": requesterId.toString(),
-    },
+    headers: getAuthHeaders({ "Content-Type": "application/json" }, requesterId),
     body: JSON.stringify(payload),
   });
 
@@ -169,7 +338,7 @@ export interface TicketFilterParams {
 
 export async function fetchTickets(
   params: TicketFilterParams = {},
-  requesterId: number
+  requesterId?: number
 ): Promise<TicketListResponse> {
   const query = new URLSearchParams();
   if (params.page !== undefined) query.set("page", params.page.toString());
@@ -189,9 +358,7 @@ export async function fetchTickets(
   const url = `${API_URL}/api/tickets${queryString ? `?${queryString}` : ""}`;
 
   const res = await fetch(url, {
-    headers: {
-      "X-Requester-Id": requesterId.toString(),
-    },
+    headers: getAuthHeaders({}, requesterId),
   });
 
   if (!res.ok) {
@@ -234,12 +401,13 @@ export interface TicketDetail {
   currentStatus: TicketStatus;
   ticketOwner: string | null;
   resolutionSummary: string | null;
+  isRequesterResolved?: boolean;
   requesterId: number;
   requester: {
     id: number;
     name: string;
     email: string;
-    department: string;
+    department?: string;
   };
   categoryId: number;
   category: { id: number; name: string };
@@ -252,13 +420,11 @@ export interface TicketDetail {
 
 export async function fetchTicketDetail(
   ticketId: number,
-  requesterId: number
+  requesterId?: number
 ): Promise<TicketDetail> {
   const url = `${API_URL}/api/tickets/${ticketId}`;
   const res = await fetch(url, {
-    headers: {
-      "X-Requester-Id": requesterId.toString(),
-    },
+    headers: getAuthHeaders({}, requesterId),
   });
 
   if (!res.ok) {
@@ -282,7 +448,7 @@ export async function fetchTicketDetail(
 export async function uploadAttachment(
   ticketId: number,
   file: File,
-  requesterId: number
+  requesterId?: number
 ): Promise<Attachment> {
   const formData = new FormData();
   formData.append("file", file);
@@ -290,9 +456,7 @@ export async function uploadAttachment(
   const url = `${API_URL}/api/tickets/${ticketId}/attachments`;
   const res = await fetch(url, {
     method: "POST",
-    headers: {
-      "X-Requester-Id": requesterId.toString(),
-    },
+    headers: getAuthHeaders({}, requesterId),
     body: formData,
   });
 
@@ -316,14 +480,12 @@ export async function uploadAttachment(
 
 export async function downloadAttachment(
   attachmentId: number,
-  requesterId: number,
+  requesterId?: number,
   filename: string = "attachment"
 ): Promise<void> {
   const url = `${API_URL}/api/attachments/${attachmentId}/download`;
   const res = await fetch(url, {
-    headers: {
-      "X-Requester-Id": requesterId.toString(),
-    },
+    headers: getAuthHeaders({}, requesterId),
   });
 
   if (!res.ok) {
@@ -353,15 +515,12 @@ export async function downloadAttachment(
 export async function softRemoveAttachment(
   attachmentId: number,
   removalReason: string,
-  requesterId: number
+  requesterId?: number
 ): Promise<Attachment> {
   const url = `${API_URL}/api/attachments/${attachmentId}/soft-remove`;
   const res = await fetch(url, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Requester-Id": requesterId.toString(),
-    },
+    headers: getAuthHeaders({ "Content-Type": "application/json" }, requesterId),
     body: JSON.stringify({ removalReason }),
   });
 
@@ -382,5 +541,3 @@ export async function softRemoveAttachment(
 
   return res.json();
 }
-
-

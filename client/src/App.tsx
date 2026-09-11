@@ -1,13 +1,22 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
+import { AuthProvider, useAuth } from "./context/AuthContext.js";
 import { Header } from "./components/Header.js";
 import { RequesterSelectorModal } from "./components/RequesterSelectorModal.js";
 import { CreateTicket } from "./components/CreateTicket.js";
 import { MyTickets } from "./components/MyTickets.js";
 import { RequesterTicketDetail } from "./components/RequesterTicketDetail.js";
+import { Login } from "./components/Login.js";
+import { ChangePassword } from "./components/ChangePassword.js";
 import { checkSystem, Category, Ticket } from "./api.js";
 
-export type AppView = "portal" | "create-ticket" | "my-tickets" | "ticket-detail";
+export type AppView =
+  | "portal"
+  | "create-ticket"
+  | "my-tickets"
+  | "ticket-detail"
+  | "login"
+  | "change-password";
 
 interface InitialViewState {
   view: AppView;
@@ -17,6 +26,12 @@ interface InitialViewState {
 function getInitialViewState(): InitialViewState {
   if (typeof window !== "undefined") {
     const pathname = window.location.pathname;
+    if (pathname === "/login") {
+      return { view: "login", ticketId: null };
+    }
+    if (pathname === "/change-password") {
+      return { view: "change-password", ticketId: null };
+    }
     if (pathname === "/tickets/new") {
       return { view: "create-ticket", ticketId: null };
     }
@@ -76,7 +91,10 @@ function SystemHealthSection() {
                 display: "inline-block",
               }}
             />
-            <h2 className="h6 fw-bold mb-0 text-uppercase tracking-wide" style={{ color: "#1C2D27" }}>
+            <h2
+              className="h6 fw-bold mb-0 text-uppercase tracking-wide"
+              style={{ color: "#1C2D27" }}
+            >
               System Catalog &amp; Health (Lab 1)
             </h2>
           </div>
@@ -93,7 +111,9 @@ function SystemHealthSection() {
 
         {status && (
           <div className="mb-3">
-            <span className={`badge ${status === "Online" ? "bg-success" : "bg-danger"}`}>
+            <span
+              className={`badge ${status === "Online" ? "bg-success" : "bg-danger"}`}
+            >
               Status: {status}
             </span>
           </div>
@@ -101,13 +121,19 @@ function SystemHealthSection() {
 
         {categories.length > 0 && (
           <div>
-            <span className="text-muted small d-block mb-2">Supported Categories:</span>
+            <span className="text-muted small d-block mb-2">
+              Supported Categories:
+            </span>
             <div className="d-flex flex-wrap gap-2">
               {categories.map((c) => (
                 <span
                   key={c.id}
                   className="badge px-3 py-2 fw-medium"
-                  style={{ backgroundColor: "#EAF6EF", color: "#006B3C", border: "1px solid #C2E2D3" }}
+                  style={{
+                    backgroundColor: "#EAF6EF",
+                    color: "#006B3C",
+                    border: "1px solid #C2E2D3",
+                  }}
                 >
                   {c.name}
                 </span>
@@ -134,7 +160,61 @@ interface AppBodyProps {
 
 function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
   const { currentRequester, isSelectorOpen } = useRequester();
+  const auth = useAuth();
 
+  // If user is authenticated and must change password, intercept view (BR-02)
+  if (auth.isAuthenticated && auth.mustChangePassword) {
+    return (
+      <ChangePassword
+        onSuccess={() => {
+          navigateTo("my-tickets");
+        }}
+      />
+    );
+  }
+
+  // Explicit login screen
+  if (currentView === "login") {
+    return (
+      <Login
+        onSuccess={(authResponse) => {
+          if (authResponse.user.mustChangePassword) {
+            navigateTo("change-password");
+          } else {
+            navigateTo("my-tickets");
+          }
+        }}
+      />
+    );
+  }
+
+  // Explicit change-password screen
+  if (currentView === "change-password") {
+    return (
+      <ChangePassword
+        onSuccess={() => {
+          navigateTo("my-tickets");
+        }}
+      />
+    );
+  }
+
+  // If not authenticated and no Lab 2 mock requester is set, show Login
+  if (!auth.isAuthenticated && !currentRequester && !isSelectorOpen) {
+    return (
+      <Login
+        onSuccess={(authResponse) => {
+          if (authResponse.user.mustChangePassword) {
+            navigateTo("change-password");
+          } else {
+            navigateTo("my-tickets");
+          }
+        }}
+      />
+    );
+  }
+
+  // Lab 2 Requester Selection modal
   if (!currentRequester || isSelectorOpen) {
     return <RequesterSelectorModal />;
   }
@@ -151,7 +231,7 @@ function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
   if (currentView === "create-ticket") {
     return (
       <CreateTicket
-        onSuccess={(ticket: Ticket) => {
+        onSuccess={(_ticket: Ticket) => {
           // Can stay on success confirmation or navigate
         }}
         onCancel={() => navigateTo("my-tickets")}
@@ -173,9 +253,13 @@ function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
 function AppContent() {
   const [initial] = useState<InitialViewState>(getInitialViewState);
   const [currentView, setCurrentView] = useState<AppView>(initial.view);
-  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(initial.ticketId);
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(
+    initial.ticketId
+  );
   const { currentRequester, closeSelector } = useRequester();
-  const prevRequesterIdRef = React.useRef<number | undefined>(currentRequester?.id);
+  const prevRequesterIdRef = React.useRef<number | undefined>(
+    currentRequester?.id
+  );
 
   const navigateTo = useCallback(
     (view: AppView, ticketId: number | null = null) => {
@@ -186,7 +270,9 @@ function AppContent() {
       }
       if (typeof window !== "undefined") {
         let targetPath = "/";
-        if (view === "create-ticket") targetPath = "/tickets/new";
+        if (view === "login") targetPath = "/login";
+        else if (view === "change-password") targetPath = "/change-password";
+        else if (view === "create-ticket") targetPath = "/tickets/new";
         else if (view === "ticket-detail" && ticketId) targetPath = `/tickets/${ticketId}`;
         else if (view === "my-tickets") targetPath = "/tickets";
 
@@ -239,8 +325,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <RequesterProvider>
-      <AppContent />
-    </RequesterProvider>
+    <AuthProvider>
+      <RequesterProvider>
+        <AppContent />
+      </RequesterProvider>
+    </AuthProvider>
   );
 }
