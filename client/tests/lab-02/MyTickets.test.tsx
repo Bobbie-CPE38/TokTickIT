@@ -123,12 +123,33 @@ const mockEmptyTickets: api.TicketListResponse = {
 
 describe("Lab 2 My Tickets UI Tests (UI-05, UI-06, UI-07)", () => {
   beforeEach(() => {
+    window.history.pushState({}, "", "/");
     localStorage.clear();
+    localStorage.setItem("toktickit_auth_token", "mock-token");
+    localStorage.setItem(
+      "toktickit_auth_user",
+      JSON.stringify({
+        id: 1,
+        name: "Jennifer Anderson",
+        email: "jennifer.anderson@kmutt.ac.th",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+      })
+    );
     vi.restoreAllMocks();
     vi.spyOn(api, "fetchActiveRequesters").mockResolvedValue(mockActiveRequesters);
     vi.spyOn(api, "fetchCategories").mockResolvedValue(mockCategories);
     vi.spyOn(api, "fetchRelatedSystems").mockResolvedValue([]);
     vi.spyOn(api, "fetchTickets").mockResolvedValue(mockRequesterATickets);
+    vi.spyOn(api, "fetchCurrentUser").mockResolvedValue({
+      id: 1,
+      name: "Jennifer Anderson",
+      email: "jennifer.anderson@kmutt.ac.th",
+      role: "REQUESTER",
+      isActive: true,
+      mustChangePassword: false,
+    });
   });
 
   afterEach(() => {
@@ -137,49 +158,33 @@ describe("Lab 2 My Tickets UI Tests (UI-05, UI-06, UI-07)", () => {
   });
 
   /**
-   * UI-05: Requester identity switch in MyTickets (AC-04, BR-16)
+   * UI-05: Requester identity and absence of legacy selector (AC-04, BR-16)
    */
-  it("UI-05: updates requester context and triggers fresh API fetch for the new user (AC-04, BR-16)", async () => {
-    localStorage.setItem("toktickit_requester_id", "1");
-
-    const fetchTicketsSpy = vi
-      .spyOn(api, "fetchTickets")
-      .mockImplementation(async (params, reqId) => {
-        if (reqId === 1) return mockRequesterATickets;
-        if (reqId === 2) return mockRequesterBTickets;
-        return mockEmptyTickets;
-      });
-
+  it("UI-05: verifies Change Requester action is removed and Sign Out is available in Profile menu", async () => {
     render(<App />);
 
-    // Initially loads Requester A tickets
     expect((await screen.findAllByText(/TKT-2025-001234/i)).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Laptop battery drains quickly/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Cannot connect to VPN/i).length).toBeGreaterThanOrEqual(1);
-    expect(fetchTicketsSpy).toHaveBeenCalledWith(expect.anything(), 1);
 
-    // Switch requester to David Lee (id: 2)
+    // Open Profile dropdown
     const profileBtn = screen.getByRole("button", { name: /Profile/i });
     fireEvent.click(profileBtn);
 
-    const switchBtn = screen.getByRole("button", { name: /Switch Requester|Change Requester/i });
-    fireEvent.click(switchBtn);
+    // Ensure Switch/Change Requester is NOT present
+    expect(
+      screen.queryByRole("button", { name: /Switch Requester|Change Requester/i })
+    ).not.toBeInTheDocument();
 
-    const select = screen.getByRole("combobox", { name: /Select Requester/i }) as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "2" } });
+    // Ensure authenticated user information and Sign Out button are present
+    expect(screen.getAllByText(/Jennifer Anderson/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/jennifer.anderson@kmutt.ac.th/i)).toBeInTheDocument();
+    const signOutBtn = screen.getByRole("button", { name: /Sign Out/i });
+    expect(signOutBtn).toBeInTheDocument();
 
-    const continueBtn = screen.getByRole("button", { name: /Continue/i });
-    fireEvent.click(continueBtn);
+    // Click Sign Out
+    fireEvent.click(signOutBtn);
 
-    // Should immediately refresh and show David Lee's ticket
-    await waitFor(() => {
-      expect(screen.getAllByText(/TKT-2025-002001/i).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText(/Printer keeps showing offline/i).length).toBeGreaterThanOrEqual(1);
-    });
-
-    // Requester A's tickets should no longer be visible
-    expect(screen.queryByText(/TKT-2025-001234/i)).not.toBeInTheDocument();
-    expect(fetchTicketsSpy).toHaveBeenCalledWith(expect.anything(), 2);
+    // User is signed out and redirected to Login screen
+    expect(await screen.findByText(/Sign in to your account/i)).toBeInTheDocument();
   });
 
   /**

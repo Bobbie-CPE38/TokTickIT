@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 import {
   Priority,
   TicketStatus,
@@ -17,18 +17,29 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
   ticketId,
   onBack,
 }) => {
-  const { currentRequester } = useRequester();
+  let activeUser: { id: number; name: string; email: string; role?: string } | null = null;
+  try {
+    const auth = useAuth();
+    activeUser = auth.user;
+  } catch {
+    // fallback if outside AuthProvider
+  }
+  if (!activeUser) {
+    try {
+      const userStr = typeof window !== "undefined" ? localStorage.getItem("toktickit_auth_user") : null;
+      if (userStr) activeUser = JSON.parse(userStr);
+    } catch {}
+  }
 
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadTicket = useCallback(async () => {
-    if (!currentRequester) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchTicketDetail(ticketId, currentRequester.id);
+      const data = await fetchTicketDetail(ticketId, activeUser?.id);
       setTicket(data);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unable to load ticket details.";
@@ -36,7 +47,7 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [ticketId, currentRequester]);
+  }, [ticketId, activeUser?.id]);
 
   useEffect(() => {
     loadTicket();
@@ -458,7 +469,7 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
           {/* Attachments Section */}
           <AttachmentSection
             ticketId={ticket.id}
-            requesterId={currentRequester?.id ?? ticket.requesterId}
+            requesterId={activeUser?.id ?? ticket.requesterId}
             attachments={ticket.attachments}
             onAttachmentsChange={(newAttachments) => {
               setTicket((prev) =>

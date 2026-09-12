@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useRequester } from "../context/RequesterContext.js";
 import { useAuth } from "../context/AuthContext.js";
 
 interface HeaderProps {
@@ -8,7 +7,6 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNavigate }) => {
-  const { currentRequester, openSelector } = useRequester();
   let auth: ReturnType<typeof useAuth> | null = null;
   try {
     auth = useAuth();
@@ -201,23 +199,13 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
                 fontSize: "0.85rem",
               }}
             >
-              {activeUser
-                ? activeUser.name.charAt(0)
-                : currentRequester
-                ? currentRequester.name.charAt(0)
-                : "P"}
+              {activeUser?.name ? activeUser.name.charAt(0) : "P"}
             </div>
             <div className="d-flex align-items-baseline gap-2 d-none d-sm-flex">
               <span className="fw-semibold small text-white">
-                {activeUser ? activeUser.name : currentRequester ? currentRequester.name : "Profile"}
+                {activeUser?.name || "Profile"}
               </span>
-              {activeUser ? (
-                renderRoleBadge(activeUser.role)
-              ) : currentRequester ? (
-                <span className="text-white-50" style={{ fontSize: "0.8rem" }}>
-                  {currentRequester.department}
-                </span>
-              ) : null}
+              {activeUser ? renderRoleBadge(activeUser.role) : null}
             </div>
             <svg
               width="14"
@@ -252,10 +240,10 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
                         fontSize: "0.875rem",
                       }}
                     >
-                      {activeUser.name.charAt(0)}
+                      {activeUser?.name ? activeUser.name.charAt(0) : "U"}
                     </div>
                     <div className="overflow-hidden">
-                      <div className="fw-semibold text-truncate small">{activeUser.name}</div>
+                      <div className="fw-semibold text-truncate small">{activeUser?.name || "User"}</div>
                       <div className="mt-0.5">{renderRoleBadge(activeUser.role)}</div>
                     </div>
                   </div>
@@ -272,42 +260,6 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
                     }}
                   >
                     Sign Out
-                  </button>
-                </div>
-              ) : currentRequester ? (
-                <div>
-                  <div className="d-flex align-items-center gap-2 pb-2 mb-2 border-bottom">
-                    <div
-                      className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-                      style={{
-                        width: "36px",
-                        height: "36px",
-                        backgroundColor: "#006B3C",
-                        fontSize: "0.875rem",
-                      }}
-                    >
-                      {currentRequester.name.charAt(0)}
-                    </div>
-                    <div className="overflow-hidden">
-                      <div className="fw-semibold text-truncate small">{currentRequester.name}</div>
-                      <div className="text-muted text-truncate" style={{ fontSize: "0.75rem" }}>
-                        {currentRequester.department}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-muted small mb-3 text-truncate" style={{ fontSize: "0.8rem" }}>
-                    {currentRequester.email}
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-sm w-100 btn-outline-success fw-medium"
-                    style={{ borderColor: "#006B3C", color: "#006B3C" }}
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      openSelector();
-                    }}
-                  >
-                    Switch Requester
                   </button>
                 </div>
               ) : (

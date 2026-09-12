@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { AuthResponse, login as apiLogin, ApiError } from "../api.js";
+import { AuthResponse, ApiError } from "../api.js";
+import { useAuth } from "../context/AuthContext.js";
 
 interface LoginProps {
   onSuccess?: (auth: AuthResponse) => void;
 }
 
 export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
+  const auth = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +25,7 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
     setErrorMessage(null);
 
     try {
-      const result = await apiLogin(email, password);
+      const result = await auth.login(email, password);
       onSuccess?.(result);
     } catch (err) {
       if (err instanceof ApiError) {

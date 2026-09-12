@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { RequesterProvider, useRequester } from "./context/RequesterContext.js";
 import { AuthProvider, useAuth } from "./context/AuthContext.js";
 import { Header } from "./components/Header.js";
-import { RequesterSelectorModal } from "./components/RequesterSelectorModal.js";
 import { CreateTicket } from "./components/CreateTicket.js";
 import { MyTickets } from "./components/MyTickets.js";
 import { RequesterTicketDetail } from "./components/RequesterTicketDetail.js";
@@ -159,7 +157,6 @@ interface AppBodyProps {
 }
 
 function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
-  const { currentRequester, isSelectorOpen } = useRequester();
   const auth = useAuth();
 
   // If user is authenticated and must change password, intercept view (BR-02)
@@ -173,8 +170,8 @@ function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
     );
   }
 
-  // Explicit login screen
-  if (currentView === "login") {
+  // Unauthenticated users are strictly shown the Login screen (cannot access tickets or portal)
+  if (!auth.isAuthenticated || currentView === "login") {
     return (
       <Login
         onSuccess={(authResponse) => {
@@ -188,7 +185,7 @@ function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
     );
   }
 
-  // Explicit change-password screen
+  // Explicit change-password screen (accessible via user profile dropdown)
   if (currentView === "change-password") {
     return (
       <ChangePassword
@@ -197,26 +194,6 @@ function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
         }}
       />
     );
-  }
-
-  // If not authenticated and no Lab 2 mock requester is set, show Login
-  if (!auth.isAuthenticated && !currentRequester && !isSelectorOpen) {
-    return (
-      <Login
-        onSuccess={(authResponse) => {
-          if (authResponse.user.mustChangePassword) {
-            navigateTo("change-password");
-          } else {
-            navigateTo("my-tickets");
-          }
-        }}
-      />
-    );
-  }
-
-  // Lab 2 Requester Selection modal
-  if (!currentRequester || isSelectorOpen) {
-    return <RequesterSelectorModal />;
   }
 
   if (currentView === "ticket-detail" && selectedTicketId) {
@@ -256,18 +233,11 @@ function AppContent() {
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(
     initial.ticketId
   );
-  const { currentRequester, closeSelector } = useRequester();
-  const prevRequesterIdRef = React.useRef<number | undefined>(
-    currentRequester?.id
-  );
 
   const navigateTo = useCallback(
     (view: AppView, ticketId: number | null = null) => {
       setCurrentView(view);
       setSelectedTicketId(ticketId);
-      if (currentRequester) {
-        closeSelector();
-      }
       if (typeof window !== "undefined") {
         let targetPath = "/";
         if (view === "login") targetPath = "/login";
@@ -281,21 +251,8 @@ function AppContent() {
         }
       }
     },
-    [currentRequester, closeSelector]
+    []
   );
-
-  useEffect(() => {
-    if (
-      prevRequesterIdRef.current !== undefined &&
-      currentRequester?.id !== undefined &&
-      prevRequesterIdRef.current !== currentRequester?.id
-    ) {
-      if (currentView === "ticket-detail") {
-        navigateTo("my-tickets");
-      }
-    }
-    prevRequesterIdRef.current = currentRequester?.id;
-  }, [currentRequester?.id, currentView, navigateTo]);
 
   useEffect(() => {
     function handlePopState() {
@@ -326,9 +283,7 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <RequesterProvider>
-        <AppContent />
-      </RequesterProvider>
+      <AppContent />
     </AuthProvider>
   );
 }

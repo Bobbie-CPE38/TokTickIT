@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import {
   AuthUser,
   AuthResponse,
+  ApiError,
   login as apiLogin,
   logout as apiLogout,
   fetchCurrentUser,
@@ -66,12 +67,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const currentUser = await fetchCurrentUser();
       setUser(currentUser);
       localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
-    } catch {
-      // If token is expired/invalid, clear auth state
-      setUser(null);
-      setToken(null);
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
+    } catch (err: unknown) {
+      // If token is expired or unauthorized, clear auth state
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
     } finally {
       setLoading(false);
     }
@@ -83,6 +86,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = useCallback(async (email: string, password: string): Promise<AuthResponse> => {
     const response = await apiLogin(email, password);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(TOKEN_KEY, response.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+    }
     setToken(response.token);
     setUser(response.user);
     return response;
@@ -92,6 +99,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await apiLogout();
     } finally {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
       setToken(null);
       setUser(null);
     }
@@ -135,7 +146,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    return {
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      mustChangePassword: false,
+      loading: false,
+      login: apiLogin,
+      logout: apiLogout,
+      changePassword: async (cp, np, cnp) => {
+        await apiChangePassword(cp, np, cnp);
+      },
+      refreshUser: async () => {},
+    };
   }
   return context;
 }

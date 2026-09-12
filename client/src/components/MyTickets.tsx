@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useTransition, useRef } from "react";
-import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 import {
   Category,
   Priority,
@@ -16,7 +16,13 @@ interface MyTicketsProps {
 }
 
 export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelectTicket }) => {
-  const { currentRequester } = useRequester();
+  let activeUser: { id: number; name: string; email: string; role?: string } | null = null;
+  try {
+    const auth = useAuth();
+    activeUser = auth.user;
+  } catch {
+    // fallback if outside AuthProvider
+  }
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
@@ -65,7 +71,6 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
 
   // Fetch tickets whenever filters, sorting, page, or requester changes
   const loadTickets = useCallback(async () => {
-    if (!currentRequester) return;
     const currentRequestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -82,7 +87,7 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
           sortBy,
           sortOrder,
         },
-        currentRequester.id
+        activeUser?.id
       );
       if (currentRequestId === requestIdRef.current) {
         setTickets(res.data);
@@ -99,7 +104,7 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
       }
     }
   }, [
-    currentRequester,
+    activeUser?.id,
     page,
     search,
     categoryId,

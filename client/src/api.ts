@@ -98,7 +98,8 @@ function getAuthHeaders(extraHeaders: Record<string, string> = {}, requesterId?:
       headers["Authorization"] = `Bearer ${token}`;
     }
   }
-  if (requesterId !== undefined) {
+  // Only attach X-Requester-Id if no Authorization Bearer token exists (for legacy unit tests)
+  if (!headers["Authorization"] && requesterId !== undefined) {
     headers["X-Requester-Id"] = requesterId.toString();
   }
   return headers;
