@@ -1,9 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.js";
 
+export type HeaderView =
+  | "portal"
+  | "create-ticket"
+  | "my-tickets"
+  | "ticket-detail"
+  | "login"
+  | "change-password"
+  | "queue"
+  | "user-management";
+
 interface HeaderProps {
-  currentView?: "portal" | "create-ticket" | "my-tickets" | "ticket-detail" | "login" | "change-password";
-  onNavigate?: (view: "portal" | "create-ticket" | "my-tickets" | "ticket-detail" | "login" | "change-password") => void;
+  currentView?: HeaderView;
+  onNavigate?: (view: HeaderView) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNavigate }) => {
@@ -90,7 +100,11 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
             style={{ fontSize: "1.25rem", letterSpacing: "-0.02em" }}
             onClick={(e) => {
               e.preventDefault();
-              onNavigate?.("my-tickets");
+              if (auth?.isAuthenticated && !auth?.mustChangePassword) {
+                onNavigate?.("my-tickets");
+              } else if (!auth?.isAuthenticated) {
+                onNavigate?.("login");
+              }
             }}
           >
             {/* Clock & Checkmark Logo Icon */}
@@ -111,8 +125,8 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
             <span>TokTickIT</span>
           </a>
 
-          {/* Navigation Items (Only rendered if not locked in change password or login) */}
-          {currentView !== "login" && currentView !== "change-password" && (
+          {/* Navigation Items (Only rendered if authenticated and not locked in change password or login) */}
+          {auth?.isAuthenticated && !auth?.mustChangePassword && currentView !== "login" && currentView !== "change-password" && (
             <nav className="d-flex align-items-center gap-1 gap-sm-3">
               <button
                 type="button"

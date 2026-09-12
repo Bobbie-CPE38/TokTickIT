@@ -14,7 +14,41 @@ export type AppView =
   | "my-tickets"
   | "ticket-detail"
   | "login"
-  | "change-password";
+  | "change-password"
+  | "queue"
+  | "user-management";
+
+export interface IntendedDestination {
+  view: AppView;
+  ticketId: number | null;
+}
+
+export function isViewPermittedForRole(view: AppView, role?: string): boolean {
+  if (view === "login" || view === "change-password") return true;
+  if (!role) return false;
+  if (role === "REQUESTER") {
+    return ["portal", "my-tickets", "create-ticket", "ticket-detail"].includes(view);
+  }
+  if (role === "IT_STAFF") {
+    return ["portal", "my-tickets", "create-ticket", "ticket-detail", "queue"].includes(view);
+  }
+  if (role === "ADMINISTRATOR") {
+    return ["portal", "my-tickets", "create-ticket", "ticket-detail", "user-management"].includes(view);
+  }
+  return false;
+}
+
+export function getDefaultViewForRole(role?: string): AppView {
+  switch (role) {
+    case "IT_STAFF":
+      return "my-tickets";
+    case "ADMINISTRATOR":
+      return "my-tickets";
+    case "REQUESTER":
+    default:
+      return "my-tickets";
+  }
+}
 
 interface InitialViewState {
   view: AppView;
@@ -36,6 +70,15 @@ function getInitialViewState(): InitialViewState {
     const match = pathname.match(/^\/tickets\/(\d+)$/);
     if (match) {
       return { view: "ticket-detail", ticketId: parseInt(match[1], 10) };
+    }
+    if (pathname === "/queue") {
+      return { view: "queue", ticketId: null };
+    }
+    if (pathname === "/admin/users") {
+      return { view: "user-management", ticketId: null };
+    }
+    if (pathname === "/tickets" || pathname === "/") {
+      return { view: "my-tickets", ticketId: null };
     }
   }
   return { view: "my-tickets", ticketId: null };
@@ -154,17 +197,47 @@ interface AppBodyProps {
   currentView: AppView;
   selectedTicketId: number | null;
   navigateTo: (view: AppView, ticketId?: number | null) => void;
+  intendedDestination: IntendedDestination | null;
+  onClearIntendedDestination: () => void;
 }
 
-function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
+function AppBody({
+  currentView,
+  selectedTicketId,
+  navigateTo,
+  intendedDestination,
+  onClearIntendedDestination,
+}: AppBodyProps) {
   const auth = useAuth();
 
+  const handlePostAuthRedirect = (userRole?: string) => {
+    const role = userRole || auth.user?.role;
+    if (
+      intendedDestination &&
+      isViewPermittedForRole(intendedDestination.view, role)
+    ) {
+      const dest = intendedDestination;
+      onClearIntendedDestination();
+      navigateTo(dest.view, dest.ticketId);
+    } else {
+      onClearIntendedDestination();
+      navigateTo(getDefaultViewForRole(role));
+    }
+  };
+
+  const storedUser =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("toktickit_auth_user") || "{}")
+      : {};
+  const effectiveMustChange =
+    auth.mustChangePassword && (storedUser.mustChangePassword ?? true);
+
   // If user is authenticated and must change password, intercept view (BR-02)
-  if (auth.isAuthenticated && auth.mustChangePassword) {
+  if (auth.isAuthenticated && effectiveMustChange) {
     return (
       <ChangePassword
         onSuccess={() => {
-          navigateTo("my-tickets");
+          handlePostAuthRedirect();
         }}
       />
     );
@@ -178,7 +251,7 @@ function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
           if (authResponse.user.mustChangePassword) {
             navigateTo("change-password");
           } else {
-            navigateTo("my-tickets");
+            handlePostAuthRedirect(authResponse.user.role);
           }
         }}
       />
@@ -190,7 +263,7 @@ function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
     return (
       <ChangePassword
         onSuccess={() => {
-          navigateTo("my-tickets");
+          handlePostAuthRedirect();
         }}
       />
     );
@@ -228,16 +301,87 @@ function AppBody({ currentView, selectedTicketId, navigateTo }: AppBodyProps) {
 }
 
 function AppContent() {
+  const auth = useAuth();
   const [initial] = useState<InitialViewState>(getInitialViewState);
-  const [currentView, setCurrentView] = useState<AppView>(initial.view);
-  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(
-    initial.ticketId
-  );
+
+  // If unauthenticated (and not loading), start with login view; otherwise use requested initial view
+  const [currentView, setCurrentView] = useState<AppView>(() => {
+    if (!auth.loading && !auth.isAuthenticated) {
+      return "login";
+    }
+    return initial.view;
+  });
+
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(() => {
+    if (!auth.loading && !auth.isAuthenticated) {
+      return null;
+    }
+    return initial.ticketId;
+  });
+
+  // Preserve intended destination if user initially attempted access to a protected route while unauthenticated
+  const [intendedDestination, setIntendedDestination] = useState<IntendedDestination | null>(() => {
+    if (initial.view !== "login" && initial.view !== "change-password") {
+      return { view: initial.view, ticketId: initial.ticketId };
+    }
+    return null;
+  });
 
   const navigateTo = useCallback(
     (view: AppView, ticketId: number | null = null) => {
+      const isAuth =
+        auth.isAuthenticated ||
+        (typeof window !== "undefined" && !!localStorage.getItem("toktickit_auth_token"));
+
+      // Guard: Unauthenticated users cannot navigate to protected views
+      if (!isAuth && view !== "login") {
+        setIntendedDestination({ view, ticketId });
+        setCurrentView("login");
+        setSelectedTicketId(null);
+        if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+          window.history.replaceState({}, "", "/login");
+        }
+        return;
+      }
+
+      // Guard: Authenticated users with mustChangePassword must remain on change-password
+      const mustChange =
+        auth.mustChangePassword &&
+        (typeof window !== "undefined"
+          ? JSON.parse(localStorage.getItem("toktickit_auth_user") || "{}").mustChangePassword ?? true
+          : true);
+
+      if (auth.isAuthenticated && mustChange && view !== "change-password") {
+        setCurrentView("change-password");
+        setSelectedTicketId(null);
+        if (typeof window !== "undefined" && window.location.pathname !== "/change-password") {
+          window.history.replaceState({}, "", "/change-password");
+        }
+        return;
+      }
+
+      // Guard: Role-based destination permission
+      if (auth.isAuthenticated && auth.user && !isViewPermittedForRole(view, auth.user.role)) {
+        const fallback = getDefaultViewForRole(auth.user.role);
+        setCurrentView(fallback);
+        setSelectedTicketId(null);
+        if (typeof window !== "undefined") {
+          const fallbackPath = fallback === "my-tickets" ? "/tickets" : "/";
+          if (window.location.pathname !== fallbackPath) {
+            window.history.replaceState({}, "", fallbackPath);
+          }
+        }
+        return;
+      }
+
+      // Explicit voluntary login navigation clears intended destination
+      if (view === "login") {
+        setIntendedDestination(null);
+      }
+
       setCurrentView(view);
       setSelectedTicketId(ticketId);
+
       if (typeof window !== "undefined") {
         let targetPath = "/";
         if (view === "login") targetPath = "/login";
@@ -245,26 +389,142 @@ function AppContent() {
         else if (view === "create-ticket") targetPath = "/tickets/new";
         else if (view === "ticket-detail" && ticketId) targetPath = `/tickets/${ticketId}`;
         else if (view === "my-tickets") targetPath = "/tickets";
+        else if (view === "queue") targetPath = "/queue";
+        else if (view === "user-management") targetPath = "/admin/users";
 
         if (window.location.pathname !== targetPath) {
           window.history.pushState({}, "", targetPath);
         }
       }
     },
-    []
+    [auth.isAuthenticated, auth.mustChangePassword, auth.user]
   );
 
+  // Synchronize URL and current view with authentication status
+  useEffect(() => {
+    // Wait for auth bootstrap before making unauthenticated redirect decisions
+    if (auth.loading) {
+      return;
+    }
+
+    const storedUser =
+      typeof window !== "undefined"
+        ? JSON.parse(localStorage.getItem("toktickit_auth_user") || "{}")
+        : {};
+    const effectiveMustChange =
+      auth.mustChangePassword && (storedUser.mustChangePassword ?? true);
+
+    if (!auth.isAuthenticated) {
+      if (currentView !== "login") {
+        setIntendedDestination((prev) => prev ?? { view: currentView, ticketId: selectedTicketId });
+        setCurrentView("login");
+        setSelectedTicketId(null);
+      }
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.history.replaceState({}, "", "/login");
+      }
+    } else if (effectiveMustChange) {
+      if (currentView !== "change-password") {
+        setCurrentView("change-password");
+      }
+      if (typeof window !== "undefined" && window.location.pathname !== "/change-password") {
+        window.history.replaceState({}, "", "/change-password");
+      }
+    } else if (currentView === "login" || (currentView === "change-password" && intendedDestination)) {
+      // Authenticated user on login or change-password with pending destination -> forward to destination or default
+      if (
+        intendedDestination &&
+        isViewPermittedForRole(intendedDestination.view, auth.user?.role)
+      ) {
+        const dest = intendedDestination;
+        setIntendedDestination(null);
+        navigateTo(dest.view, dest.ticketId);
+      } else {
+        setIntendedDestination(null);
+        navigateTo(getDefaultViewForRole(auth.user?.role));
+      }
+    }
+  }, [
+    auth.loading,
+    auth.isAuthenticated,
+    auth.mustChangePassword,
+    auth.user,
+    currentView,
+    selectedTicketId,
+    intendedDestination,
+    navigateTo,
+  ]);
+
+  // Handle browser back/forward navigation while respecting authentication and role guards
   useEffect(() => {
     function handlePopState() {
+      if (auth.loading) return;
+
       const state = getInitialViewState();
+
+      if (!auth.isAuthenticated) {
+        if (state.view !== "login") {
+          setIntendedDestination({ view: state.view, ticketId: state.ticketId });
+          setCurrentView("login");
+          setSelectedTicketId(null);
+          window.history.replaceState({}, "", "/login");
+          return;
+        }
+        setCurrentView("login");
+        setSelectedTicketId(null);
+        return;
+      }
+
+      const storedUser =
+        typeof window !== "undefined"
+          ? JSON.parse(localStorage.getItem("toktickit_auth_user") || "{}")
+          : {};
+      const effectiveMustChange =
+        auth.mustChangePassword && (storedUser.mustChangePassword ?? true);
+
+      if (effectiveMustChange) {
+        if (state.view !== "change-password") {
+          setCurrentView("change-password");
+          setSelectedTicketId(null);
+          window.history.replaceState({}, "", "/change-password");
+          return;
+        }
+        setCurrentView("change-password");
+        setSelectedTicketId(null);
+        return;
+      }
+
+      if (auth.user && !isViewPermittedForRole(state.view, auth.user.role)) {
+        const fallback = getDefaultViewForRole(auth.user.role);
+        setCurrentView(fallback);
+        setSelectedTicketId(null);
+        window.history.replaceState({}, "", fallback === "my-tickets" ? "/tickets" : "/");
+        return;
+      }
+
       setCurrentView(state.view);
       setSelectedTicketId(state.ticketId);
     }
+
     window.addEventListener("popstate", handlePopState);
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, []);
+  }, [auth.loading, auth.isAuthenticated, auth.mustChangePassword, auth.user]);
+
+  // If loading auth state and session token exists, display clean Zen Green loading state
+  if (auth.loading && auth.token) {
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "#F5F7F6" }}>
+        <Header currentView={currentView} onNavigate={(view) => navigateTo(view)} />
+        <main className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
+          <div className="spinner-border" style={{ color: "#006B3C" }} role="status">
+            <span className="visually-hidden">Loading session...</span>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#F5F7F6" }}>
@@ -274,6 +534,8 @@ function AppContent() {
           currentView={currentView}
           selectedTicketId={selectedTicketId}
           navigateTo={navigateTo}
+          intendedDestination={intendedDestination}
+          onClearIntendedDestination={() => setIntendedDestination(null)}
         />
       </main>
     </div>

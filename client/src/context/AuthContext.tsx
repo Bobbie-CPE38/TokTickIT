@@ -52,7 +52,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return null;
   });
 
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const storedToken = localStorage.getItem(TOKEN_KEY);
+      const storedUser = localStorage.getItem(USER_KEY);
+      return !!storedToken && !storedUser;
+    }
+    return false;
+  });
 
   const refreshUser = useCallback(async () => {
     const storedToken = localStorage.getItem(TOKEN_KEY);
@@ -115,13 +122,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       confirmPassword: string
     ): Promise<void> => {
       await apiChangePassword(currentPassword, newPassword, confirmPassword);
-      if (user) {
-        const updatedUser = { ...user, mustChangePassword: false };
-        setUser(updatedUser);
-        localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
-      }
+      setUser((prevUser) => {
+        let baseUser = prevUser;
+        if (!baseUser && typeof window !== "undefined") {
+          try {
+            const raw = localStorage.getItem(USER_KEY);
+            if (raw) baseUser = JSON.parse(raw);
+          } catch {}
+        }
+        const updated = baseUser ? { ...baseUser, mustChangePassword: false } : null;
+        if (typeof window !== "undefined" && updated) {
+          localStorage.setItem(USER_KEY, JSON.stringify(updated));
+        }
+        return updated;
+      });
     },
-    [user]
+    []
   );
 
   return (
