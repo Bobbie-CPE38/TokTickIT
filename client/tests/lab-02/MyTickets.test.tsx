@@ -150,6 +150,7 @@ describe("Lab 2 My Tickets UI Tests (UI-05, UI-06, UI-07)", () => {
       isActive: true,
       mustChangePassword: false,
     });
+    vi.spyOn(api, "logout").mockResolvedValue(undefined);
   });
 
   afterEach(() => {
