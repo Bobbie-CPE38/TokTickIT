@@ -1,21 +1,21 @@
 import React, { useEffect, useCallback } from "react";
-import { useAuth } from "../../context/AuthContext.js";
-import { useRouter } from "./RouterContext.js";
+import { useAuth } from "./context/AuthContext.js";
+import { useRouter } from "./core/router/RouterContext.js";
 import {
   isViewPermittedForRole,
   pathToView,
   viewToPath,
-} from "./RouteGuard.js";
-import { AuthLayout } from "../../layouts/AuthLayout.js";
-import { AppLayout } from "../../layouts/AppLayout.js";
-import { LoginScreen } from "../../features/auth/LoginScreen.js";
-import { ChangePasswordScreen } from "../../features/auth/ChangePasswordScreen.js";
-import { MyTicketsScreen } from "../../features/tickets/MyTicketsScreen.js";
-import { CreateTicketScreen } from "../../features/tickets/CreateTicketScreen.js";
-import { RequesterDetailScreen } from "../../features/tickets/RequesterDetailScreen.js";
-import { SystemHealthSection } from "../../features/reference/SystemHealthSection.js";
-import { StaffQueueScreen } from "../../features/staff/StaffQueueScreen.js";
-import { UserManagementScreen } from "../../features/admin/UserManagementScreen.js";
+} from "./core/router/RouteGuard.js";
+import { AuthLayout } from "./layouts/AuthLayout.js";
+import { AppLayout } from "./layouts/AppLayout.js";
+import { LoginScreen } from "./features/auth/LoginScreen.js";
+import { ChangePasswordScreen } from "./features/auth/ChangePasswordScreen.js";
+import { MyTicketsScreen } from "./features/tickets/MyTicketsScreen.js";
+import { CreateTicketScreen } from "./features/tickets/CreateTicketScreen.js";
+import { RequesterDetailScreen } from "./features/tickets/RequesterDetailScreen.js";
+import { SystemHealthSection } from "./features/reference/SystemHealthSection.js";
+import { StaffQueueScreen } from "./features/staff/StaffQueueScreen.js";
+import { UserManagementScreen } from "./features/admin/UserManagementScreen.js";
 
 export function AppRouter() {
   const auth = useAuth();
