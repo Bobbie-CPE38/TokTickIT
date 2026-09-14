@@ -8,7 +8,7 @@ import { getPrisma } from "../../prisma.js";
  */
 export async function resolveRequester(
   req: Request
-): Promise<AuthUser | null | "inactive" | "unauthorized"> {
+): Promise<AuthUser | "inactive" | "unauthorized"> {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.substring(7).trim();
