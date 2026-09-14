@@ -18,7 +18,7 @@ export interface RouterContextType {
   navigateTo: (path: string) => void;
   replaceTo: (path: string) => void;
   intendedDestination: IntendedDestination | null;
-  setIntendedDestination: (dest: IntendedDestination | null) => void;
+  setIntendedDestination: (dest: IntendedDestination | null | ((prev: IntendedDestination | null) => IntendedDestination | null)) => void;
   clearIntendedDestination: () => void;
 }
 
@@ -40,7 +40,13 @@ export const RouterProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // Synchronously inspect window.location.pathname upon initial render
   const [currentPath, setCurrentPath] = useState<string>(getWindowPath);
   const [ticketId, setTicketId] = useState<number | null>(() => parseTicketId(getWindowPath()));
-  const [intendedDestination, setIntendedDestination] = useState<IntendedDestination | null>(null);
+  const [intendedDestination, setIntendedDestination] = useState<IntendedDestination | null>(() => {
+    const p = getWindowPath();
+    if (p !== "/login" && p !== "/change-password") {
+      return { path: p, ticketId: parseTicketId(p) };
+    }
+    return null;
+  });
 
   const navigateTo = useCallback((path: string) => {
     if (typeof window !== "undefined") {
