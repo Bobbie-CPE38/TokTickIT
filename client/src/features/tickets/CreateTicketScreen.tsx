@@ -10,6 +10,8 @@ import {
   createTicket,
   uploadAttachment,
 } from "../../api.js";
+import { formatFileSize } from "../../core/utils/formatters.js";
+import { createDragHandlers } from "../../core/utils/dragDrop.js";
 
 export interface CreateTicketProps {
   onSuccess?: (ticket: Ticket) => void;
@@ -88,11 +90,6 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
   const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
   const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
 
   const handleAddFiles = (filesList: FileList | File[]) => {
     setAttachmentError(null);
@@ -125,27 +122,10 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
     setStagedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (stagedFiles.length < 5 && !isSubmitting) {
-      setIsDragging(true);
-    }
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (stagedFiles.length < 5 && !isSubmitting) {
-      setIsDragging(true);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
+  const { handleDragOver, handleDragEnter, handleDragLeave } = createDragHandlers(
+    setIsDragging,
+    stagedFiles.length < 5 && !isSubmitting
+  );
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();

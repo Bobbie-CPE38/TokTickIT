@@ -7,6 +7,8 @@ import {
   fetchTicketDetail,
 } from "../../api.js";
 import { AttachmentList as AttachmentSection } from "../attachments/AttachmentList.js";
+import { StatusBadge } from "../../components/common/StatusBadge.js";
+import { PriorityBadge } from "../../components/common/PriorityBadge.js";
 
 export interface RequesterTicketDetailProps {
   ticketId: number;
@@ -68,63 +70,6 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
     } catch {
       return isoString;
     }
-  };
-
-  const renderStatusBadge = (st: TicketStatus) => {
-    const config: Record<
-      TicketStatus,
-      { label: string; bg: string; text: string; border: string }
-    > = {
-      NEW: { label: "New", bg: "#DBEAFE", text: "#1E40AF", border: "#93C5FD" },
-      OPEN: { label: "Open", bg: "#CCFBF1", text: "#0D9488", border: "#5EEAD4" },
-      IN_PROGRESS: { label: "In Progress", bg: "#EAF6EF", text: "#0B7A46", border: "#A7F3D0" },
-      WAITING_FOR_REQUESTER: { label: "Waiting for Requester", bg: "#FEF3C7", text: "#D97706", border: "#FDE68A" },
-      PENDING: { label: "Pending", bg: "#FEF3C7", text: "#D97706", border: "#FDE68A" },
-      RESOLVED: { label: "Resolved", bg: "#D1FAE5", text: "#059669", border: "#6EE7B7" },
-      CLOSED: { label: "Closed", bg: "#F3F4F6", text: "#4B5563", border: "#D1D5DB" },
-      REOPENED: { label: "Reopened", bg: "#FAE8FF", text: "#C026D3", border: "#F5D0FE" },
-      CANCELLED: { label: "Cancelled", bg: "#F3F4F6", text: "#6B7280", border: "#E5E7EB" },
-    };
-    const c = config[st] || config.NEW;
-    return (
-      <span
-        className="badge rounded-pill px-3 py-1.5 fw-semibold"
-        style={{
-          backgroundColor: c.bg,
-          color: c.text,
-          border: `1px solid ${c.border}`,
-          fontSize: "0.8rem",
-        }}
-      >
-        {c.label}
-      </span>
-    );
-  };
-
-  const renderPriorityBadge = (p: Priority) => {
-    const config: Record<
-      Priority,
-      { label: string; bg: string; text: string; border: string }
-    > = {
-      LOW: { label: "Low", bg: "#D1FAE5", text: "#059669", border: "#A7F3D0" },
-      MEDIUM: { label: "Medium", bg: "#FEF3C7", text: "#D97706", border: "#FDE68A" },
-      HIGH: { label: "High", bg: "#FEE2E2", text: "#DC2626", border: "#FCA5A5" },
-      URGENT: { label: "Urgent", bg: "#FCA5A5", text: "#991B1B", border: "#F87171" },
-    };
-    const c = config[p] || config.MEDIUM;
-    return (
-      <span
-        className="badge rounded-pill px-3 py-1.5 fw-semibold"
-        style={{
-          backgroundColor: c.bg,
-          color: c.text,
-          border: `1px solid ${c.border}`,
-          fontSize: "0.8rem",
-        }}
-      >
-        {c.label}
-      </span>
-    );
   };
 
   if (loading) {
@@ -340,7 +285,7 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
                   borderRadius: "6px",
                 }}
               >
-                {renderPriorityBadge(ticket.requestedPriority)}
+                <PriorityBadge priority={ticket.requestedPriority} size="md" />
               </div>
             </div>
 
@@ -358,7 +303,7 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
                   borderRadius: "6px",
                 }}
               >
-                {renderPriorityBadge(ticket.itPriority)}
+                <PriorityBadge priority={ticket.itPriority} size="md" />
               </div>
             </div>
 
@@ -376,7 +321,7 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
                   borderRadius: "6px",
                 }}
               >
-                {renderStatusBadge(ticket.currentStatus)}
+                <StatusBadge status={ticket.currentStatus} size="md" />
               </div>
             </div>
           </div>

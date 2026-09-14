@@ -6,6 +6,8 @@ import {
   softRemoveAttachment,
 } from "../../api.js";
 import { SoftRemoveModal } from "./SoftRemoveModal.js";
+import { formatFileSize } from "../../core/utils/formatters.js";
+import { createDragHandlers } from "../../core/utils/dragDrop.js";
 
 export interface AttachmentSectionProps {
   ticketId: number;
@@ -35,11 +37,7 @@ export const AttachmentList: React.FC<AttachmentSectionProps> = ({
   const activeAttachments = attachments.filter((a) => !a.isRemoved);
   const removedAttachments = attachments.filter((a) => a.isRemoved);
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
+  const isMaxReached = activeAttachments.length >= 5;
 
   const formatDate = (isoString?: string | null): string => {
     if (!isoString) return "";
@@ -177,27 +175,10 @@ export const AttachmentList: React.FC<AttachmentSectionProps> = ({
     await processFileUpload(file);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isMaxReached && !isUploading) {
-      setIsDragging(true);
-    }
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isMaxReached && !isUploading) {
-      setIsDragging(true);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
+  const { handleDragOver, handleDragEnter, handleDragLeave } = createDragHandlers(
+    setIsDragging,
+    !isMaxReached && !isUploading
+  );
 
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -212,8 +193,6 @@ export const AttachmentList: React.FC<AttachmentSectionProps> = ({
     const file = files[0];
     await processFileUpload(file);
   };
-
-  const isMaxReached = activeAttachments.length >= 5;
 
   return (
     <div className="mt-4">
