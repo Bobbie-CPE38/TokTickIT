@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useTransition, useRef } from "react";
-import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 import {
   Category,
   Priority,
@@ -16,7 +16,13 @@ interface MyTicketsProps {
 }
 
 export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelectTicket }) => {
-  const { currentRequester } = useRequester();
+  let activeUser: { id: number; name: string; email: string; role?: string } | null = null;
+  try {
+    const auth = useAuth();
+    activeUser = auth.user;
+  } catch {
+    // fallback if outside AuthProvider
+  }
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
@@ -65,7 +71,6 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
 
   // Fetch tickets whenever filters, sorting, page, or requester changes
   const loadTickets = useCallback(async () => {
-    if (!currentRequester) return;
     const currentRequestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
@@ -82,7 +87,7 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
           sortBy,
           sortOrder,
         },
-        currentRequester.id
+        activeUser?.id
       );
       if (currentRequestId === requestIdRef.current) {
         setTickets(res.data);
@@ -99,7 +104,7 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
       }
     }
   }, [
-    currentRequester,
+    activeUser?.id,
     page,
     search,
     categoryId,
@@ -161,9 +166,12 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
       NEW: { label: "New", bg: "#DBEAFE", text: "#1E40AF", border: "#93C5FD" },
       OPEN: { label: "Open", bg: "#CCFBF1", text: "#0D9488", border: "#5EEAD4" },
       IN_PROGRESS: { label: "In Progress", bg: "#EAF6EF", text: "#0B7A46", border: "#A7F3D0" },
+      WAITING_FOR_REQUESTER: { label: "Waiting for Requester", bg: "#FEF3C7", text: "#D97706", border: "#FDE68A" },
       PENDING: { label: "Pending", bg: "#FEF3C7", text: "#D97706", border: "#FDE68A" },
       RESOLVED: { label: "Resolved", bg: "#D1FAE5", text: "#059669", border: "#6EE7B7" },
       CLOSED: { label: "Closed", bg: "#F3F4F6", text: "#4B5563", border: "#D1D5DB" },
+      REOPENED: { label: "Reopened", bg: "#FAE8FF", text: "#C026D3", border: "#F5D0FE" },
+      CANCELLED: { label: "Cancelled", bg: "#F3F4F6", text: "#6B7280", border: "#E5E7EB" },
     };
     const c = config[st] || config.NEW;
     return (

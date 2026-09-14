@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 import {
   Category,
   RelatedSystem,
@@ -24,7 +24,19 @@ interface FormErrors {
 }
 
 export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel }) => {
-  const { currentRequester } = useRequester();
+  let activeUser: { id: number; name: string; email: string; role?: string } | null = null;
+  try {
+    const auth = useAuth();
+    activeUser = auth.user;
+  } catch {
+    // fallback if outside AuthProvider
+  }
+  if (!activeUser) {
+    try {
+      const userStr = typeof window !== "undefined" ? localStorage.getItem("toktickit_auth_user") : null;
+      if (userStr) activeUser = JSON.parse(userStr);
+    } catch {}
+  }
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
@@ -184,8 +196,8 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
       return;
     }
 
-    if (!currentRequester) {
-      setApiError("No active requester selected.");
+    if (!activeUser) {
+      setApiError("You must be signed in to create a ticket.");
       return;
     }
 
@@ -200,14 +212,14 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
           summary: summary.trim(),
           description: description.trim(),
         },
-        currentRequester.id
+        activeUser.id
       );
 
       // Upload staged attachments if any
       if (stagedFiles.length > 0) {
         for (const file of stagedFiles) {
           try {
-            await uploadAttachment(ticket.id, file, currentRequester.id);
+            await uploadAttachment(ticket.id, file, activeUser.id);
           } catch (uploadErr) {
             console.error(`Failed to upload attachment ${file.name}:`, uploadErr);
           }
@@ -468,7 +480,7 @@ export const CreateTicket: React.FC<CreateTicketProps> = ({ onSuccess, onCancel 
                 <div className="col-12 col-md-6">
                   <span className="text-muted small d-block">Requester Name</span>
                   <span className="fw-semibold" style={{ color: "#1C2D27" }}>
-                    {currentRequester ? `${currentRequester.name} (${currentRequester.department})` : "Unassigned"}
+                    {activeUser ? activeUser.name : "Unassigned"}
                   </span>
                 </div>
                 <div className="col-12 col-md-6">
