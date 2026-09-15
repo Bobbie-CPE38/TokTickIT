@@ -601,7 +601,7 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
                       >
                         {postingComment ? (
                           <>
-                            <span className="spinner-border spinner-border-sm me-1.5" role="status" aria-hidden="true" />
+                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
                             Posting...
                           </>
                         ) : (
