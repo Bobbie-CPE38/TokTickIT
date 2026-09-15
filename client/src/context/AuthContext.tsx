@@ -12,7 +12,7 @@ import {
 const TOKEN_KEY = "toktickit_auth_token";
 const USER_KEY = "toktickit_auth_user";
 
-interface AuthContextType {
+export interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isAuthenticated: boolean;
@@ -28,7 +28,7 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => {

@@ -198,3 +198,29 @@ export async function getRequesterTicketDetail(ticketId: number, requester: Auth
     ticketOwner: ticket.ticketOwner ? ticket.ticketOwner.name : null,
   };
 }
+
+export async function indicateProblemResolved(ticketId: number, requester: AuthUser) {
+  const prisma = getPrisma();
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+  });
+
+  if (!ticket || ticket.requesterId !== requester.id) {
+    throw new NotFoundError("Ticket not found.");
+  }
+
+  const updated = await prisma.ticket.update({
+    where: { id: ticketId },
+    data: {
+      isRequesterResolved: true,
+    },
+    select: {
+      id: true,
+      ticketNumber: true,
+      isRequesterResolved: true,
+      updatedAt: true,
+    },
+  });
+
+  return updated;
+}

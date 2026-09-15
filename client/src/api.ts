@@ -542,3 +542,86 @@ export async function softRemoveAttachment(
 
   return res.json();
 }
+
+export interface PublicComment {
+  id: number;
+  ticketId: number;
+  content: string;
+  createdAt: string;
+  author: {
+    id: number;
+    name: string;
+    role: Role;
+  };
+}
+
+export async function indicateTicketResolved(
+  ticketId: number,
+  requesterId?: number
+): Promise<{ id: number; ticketNumber: string; isRequesterResolved: boolean; updatedAt: string }> {
+  const url = `${API_URL}/api/tickets/${ticketId}/resolve-indication`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: getAuthHeaders({}, requesterId),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to indicate ticket resolution with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.error) errorMsg = data.error;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function fetchPublicComments(
+  ticketId: number,
+  requesterId?: number
+): Promise<PublicComment[]> {
+  const url = `${API_URL}/api/tickets/${ticketId}/comments`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders({}, requesterId),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to fetch comments with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.error) errorMsg = data.error;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function createPublicComment(
+  ticketId: number,
+  content: string,
+  requesterId?: number
+): Promise<PublicComment> {
+  const url = `${API_URL}/api/tickets/${ticketId}/comments`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }, requesterId),
+    body: JSON.stringify({ content }),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to post comment with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
