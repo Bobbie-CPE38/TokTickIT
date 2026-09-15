@@ -8,8 +8,19 @@ Follow all instructions in this file strictly to ensure high-quality, spec-compl
 
 ## 1. Project Overview & Architecture
 
+TokTickIT is organized using a **Feature-Based Hybrid Architecture** across both backend and frontend:
+
 - **Frontend (`client/`):** React 18, TypeScript, Vite, Bootstrap 5 / Zen Green custom CSS styling, Vitest + React Testing Library.
+  - `src/core/router/`: Zero-dependency browser History API navigation provider (`RouterContext`, `RouteGuard`).
+  - `src/layouts/`: Layout shells (`AuthLayout`, `AppLayout`).
+  - `src/components/common/`: Shared reusable UI components (`StatusBadge`, `PriorityBadge`, `EyeToggleIcon`).
+  - `src/components/`: Backward-compatibility re-export shims (`Login.tsx`, `AttachmentSection.tsx`, `RequesterTicketDetail.tsx`, etc.).
+  - `src/features/`: Domain vertical slices (`auth`, `tickets`, `attachments`, `staff`, `admin`, `reference`).
+  - `src/App.tsx`: Minimal root orchestrator (< 80 lines) mounting auth and routing providers.
 - **Backend (`server/`):** Node.js, Express, TypeScript, Prisma ORM, PostgreSQL (via Docker), bcrypt, jsonwebtoken, Vitest + Supertest.
+  - `src/core/`: Cross-cutting foundational infrastructure (`config.ts`, `tokens.ts`, `errors.ts`, `middleware/`).
+  - `src/features/`: Domain vertical slices containing routes, controllers, and services (`auth`, `tickets`, `attachments`, `comments-notes`, `staff`, `users`, `reference`).
+  - `src/app.ts`: Minimal Express bootstrap (< 100 lines) mounting feature routers and global error handling.
 - **E2E Testing (`e2e/`):** Playwright for cross-browser and responsive workflow tests across Desktop (`≥ 992px`), Tablet (`768–991px`), and Mobile (`< 768px`).
 - **Current Milestone:** **Lab 3 — Users, Roles, IT Staff Ticketing, and Admin Screens (Sprint 3)**.
 
@@ -44,6 +55,11 @@ Before making any modifications or writing code, **always read and adhere to the
    - Planned test table (`API-01`–`API-35`, `UI-01`–`UI-13`, `E2E-01`–`E2E-04`).
    - Complete Traceability Matrix mapping 100% of Acceptance Criteria (`AC-01`–`AC-25`) to automated test files.
    - Explicit Lab 2 regression test requirement (`API-35`): all 43 existing Lab 2 automated tests in `server/tests/lab-02/` must pass against the migrated database.
+5. **[`docs/lab-03/architectural_reconstruction_plan.md`](./docs/lab-03/architectural_reconstruction_plan.md):**
+   - Architectural contract for the feature-based hybrid directory structure.
+   - Thin entry facade constraints: `server/src/app.ts` (< 100 lines) and `client/src/App.tsx` (< 80 lines).
+   - Invariant: `core/` infrastructure must never import from `features/`.
+   - Backward-compatibility re-export shims in `client/src/components/` and `server/src/auth.ts`.
 
 ---
 
@@ -129,10 +145,17 @@ Whenever prompted to implement a task or issue:
 3. **Step 3: Implement Minimal Correct Code**
    - Write only the necessary code in backend and frontend to satisfy the failing tests.
    - Strictly follow the Zen Green tokens (`ui-spec.md`) and API schemas (`api-spec.md`).
+   - **Feature-Based Placement:** Add new business logic, controllers, and routes into the designated domain vertical slices under `server/src/features/<slice>/` (e.g. `comments-notes`, `staff`, `users`) and `client/src/features/<slice>/`.
+   - **Preserve Entry Facades:** `server/src/app.ts` must only mount routers and middleware (< 100 lines); `client/src/App.tsx` must only mount providers (< 80 lines).
+   - **One-Way Inward Dependency Rule:** `core/` infrastructure must NEVER import from `features/`. Dependencies flow strictly inward (`features/` $\rightarrow$ `core/`).
+   - **Preserve Re-export Shims:** Never delete or alter existing backward-compatibility shims in `client/src/components/` or `server/src/auth.ts`.
+   - **Reuse Shared UI Components:** Use existing primitives in `client/src/components/common/` (`StatusBadge`, `PriorityBadge`, `EyeToggleIcon`) and utilities in `client/src/core/utils/` (`formatFileSize`, `createDragHandlers`) rather than creating duplicate markup or handlers.
 4. **Step 4: Verify & Self-Audit**
    - Confirm that all unit, API, and UI tests pass 100%.
    - **Zero Regression Check:** Confirm that all 43 Lab 2 tests under `server/tests/lab-02/` continue to pass 100%.
    - Ensure zero TypeScript compiler errors (`npx tsc --noEmit` on both client and server).
+   - **Architectural Line Limits Check:** Verify `server/src/app.ts` remains < 100 lines and `client/src/App.tsx` remains < 80 lines.
+   - **Dependency Isolation Check:** Verify that `server/src/core/` and `client/src/core/` contain zero imports from `features/`.
    - Check error resilience: form values must remain preserved in UI state when API errors occur (`BR-20`).
    - Check multi-tenant isolation: cross-requester access must return **HTTP 404 Not Found**, never `403 Forbidden`.
    - Check admin safety guards: self-deactivation and last active admin deactivation must be rejected with **HTTP 422 Unprocessable Entity**.
