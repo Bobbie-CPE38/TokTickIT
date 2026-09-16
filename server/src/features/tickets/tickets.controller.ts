@@ -92,3 +92,35 @@ export async function getTicketDetail(
     next(error);
   }
 }
+
+export async function indicateTicketResolved(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const requesterResolution = await resolveRequester(req);
+    if (requesterResolution === "unauthorized") {
+      res.status(401).json({ error: "Unauthorized: Missing authentication credentials." });
+      return;
+    }
+    if (requesterResolution === "inactive") {
+      res.status(403).json({ error: "Forbidden: Requester is inactive or does not exist." });
+      return;
+    }
+
+    const ticketId = parseInt(req.params.id, 10);
+    if (isNaN(ticketId)) {
+      res.status(400).json({ error: "Invalid ticket ID provided." });
+      return;
+    }
+
+    const result = await ticketsService.indicateProblemResolved(
+      ticketId,
+      requesterResolution
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
