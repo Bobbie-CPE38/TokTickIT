@@ -107,6 +107,19 @@ describe("Lab 3 Authorization & Requester Session Isolation API Tests (API-09, A
   });
 
   /**
+   * API-11: Requester attempts to access IT Staff queue (GET /api/staff/tickets)
+   * AC-21, FR-09
+   */
+  it("API-11: strictly forbids Requesters from accessing IT Staff queue with HTTP 403 Forbidden (AC-21, FR-09)", async () => {
+    const res = await request(app)
+      .get("/api/staff/tickets")
+      .set("Authorization", `Bearer ${jenniferToken}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body).toHaveProperty("error");
+  });
+
+  /**
    * API-35: Lab 2 Regression & Database Evolution Compatibility
    * BR-22, FR-12
    */
@@ -123,3 +136,4 @@ describe("Lab 3 Authorization & Requester Session Isolation API Tests (API-09, A
     expect(res.body.pagination).toHaveProperty("page", 1);
   });
 });
+

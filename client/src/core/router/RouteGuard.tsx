@@ -18,7 +18,7 @@ export function isViewPermittedForRole(view: AppView, role?: string): boolean {
     return ["portal", "my-tickets", "create-ticket", "ticket-detail", "queue"].includes(view);
   }
   if (role === "ADMINISTRATOR") {
-    return ["portal", "my-tickets", "create-ticket", "ticket-detail", "user-management"].includes(view);
+    return ["portal", "my-tickets", "create-ticket", "ticket-detail", "user-management", "queue"].includes(view);
   }
   return false;
 }
