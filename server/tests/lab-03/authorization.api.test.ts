@@ -7,6 +7,7 @@ describe("Lab 3 Authorization & Requester Session Isolation API Tests (API-09, A
   const prisma = getPrisma();
   let jenniferToken: string;
   let davidToken: string;
+  let staffToken: string;
   let jenniferId: number;
   let davidId: number;
   let categoryId: number;
@@ -34,6 +35,16 @@ describe("Lab 3 Authorization & Requester Session Isolation API Tests (API-09, A
     expect(loginResB.status).toBe(200);
     davidToken = loginResB.body.token;
     davidId = loginResB.body.user.id;
+
+    // Authenticate Michael Brown (IT Staff)
+    const loginStaff = await request(app)
+      .post("/api/auth/login")
+      .send({
+        email: "staff.michael@toktickit.com",
+        password: "Password123!",
+      });
+    expect(loginStaff.status).toBe(200);
+    staffToken = loginStaff.body.token;
 
     // Fetch valid active Category and RelatedSystem
     const category = await prisma.category.findFirst({ where: { isActive: true } });
@@ -134,6 +145,61 @@ describe("Lab 3 Authorization & Requester Session Isolation API Tests (API-09, A
     expect(res.body).toHaveProperty("pagination");
     expect(res.body.pagination).toHaveProperty("total");
     expect(res.body.pagination).toHaveProperty("page", 1);
+  });
+
+  /**
+   * API-33: IT Staff and Admin can upload attachments to queue tickets under Option B
+   * AC-25, FR-12, BR-23
+   */
+  it("API-33: permits IT Staff to upload attachments to any ticket under Option B (BR-23, AC-25)", async () => {
+    // 1. Create a ticket as Jennifer
+    const createRes = await request(app)
+      .post("/api/tickets")
+      .set("Authorization", `Bearer ${jenniferToken}`)
+      .send({
+        categoryId,
+        relatedSystemId,
+        requestedPriority: "LOW",
+        summary: "Option B Attachment Test Ticket",
+        description: "Checking staff attachment upload.",
+      });
+    expect(createRes.status).toBe(201);
+    const ticketId = createRes.body.id;
+
+    // 2. Michael Brown (IT Staff) uploads an attachment to Jennifer's ticket
+    const fileBuffer = Buffer.from("fake-png-image-content-bytes");
+    const uploadRes = await request(app)
+      .post(`/api/tickets/${ticketId}/attachments`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .attach("file", fileBuffer, {
+        filename: "diagnostic.png",
+        contentType: "image/png",
+      });
+
+    expect(uploadRes.status).toBe(201);
+    expect(uploadRes.body).toHaveProperty("id");
+    expect(uploadRes.body).toHaveProperty("originalFileName", "diagnostic.png");
+    const attachmentId = uploadRes.body.id;
+
+    // 3. Staff can download the attachment
+    const downloadRes = await request(app)
+      .get(`/api/attachments/${attachmentId}/download`)
+      .set("Authorization", `Bearer ${staffToken}`);
+    expect(downloadRes.status).toBe(200);
+
+    // 4. Staff can soft-remove the attachment
+    const removeRes = await request(app)
+      .patch(`/api/attachments/${attachmentId}/soft-remove`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({ removalReason: "Superseded by updated diagnostics report." });
+    expect(removeRes.status).toBe(200);
+    expect(removeRes.body.isRemoved).toBe(true);
+
+    // 5. Cross-requester: David cannot download Jennifer's ticket attachment (returns 404)
+    const davidDownloadRes = await request(app)
+      .get(`/api/attachments/${attachmentId}/download`)
+      .set("Authorization", `Bearer ${davidToken}`);
+    expect(davidDownloadRes.status).toBe(404);
   });
 });
 

@@ -15,6 +15,7 @@ import { CreateTicketScreen } from "./features/tickets/CreateTicketScreen.js";
 import { RequesterDetailScreen } from "./features/tickets/RequesterDetailScreen.js";
 import { SystemHealthSection } from "./features/reference/SystemHealthSection.js";
 import { StaffQueueScreen } from "./features/staff/StaffQueueScreen.js";
+import { StaffDetailScreen } from "./features/staff/StaffDetailScreen.js";
 import { UserManagementScreen } from "./features/admin/UserManagementScreen.js";
 
 export function AppRouter() {
@@ -149,6 +150,9 @@ export function AppRouter() {
     }
     if (view === "queue") {
       return <StaffQueueScreen />;
+    }
+    if (view === "staff-ticket-detail" && ticketId) {
+      return <StaffDetailScreen ticketId={ticketId} onBack={() => navigateTo("/queue")} />;
     }
     if (view === "user-management") {
       return <UserManagementScreen />;

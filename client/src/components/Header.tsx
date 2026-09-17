@@ -9,6 +9,7 @@ export type HeaderView =
   | "login"
   | "change-password"
   | "queue"
+  | "staff-ticket-detail"
   | "user-management";
 
 interface HeaderProps {
@@ -173,9 +174,9 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
                   className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-2 px-2 py-1 small fw-medium"
                   style={{
                     fontSize: "0.9rem",
-                    opacity: currentView === "queue" ? 1 : 0.85,
+                    opacity: currentView === "queue" || currentView === "staff-ticket-detail" ? 1 : 0.85,
                     borderBottom:
-                      currentView === "queue"
+                      currentView === "queue" || currentView === "staff-ticket-detail"
                         ? "2px solid #FFFFFF"
                         : "2px solid transparent",
                     borderRadius: 0,

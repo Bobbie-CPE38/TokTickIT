@@ -134,7 +134,7 @@ describe("Lab 3 Comments API Tests (API-21, API-24)", () => {
   });
 
   /**
-   * API-24: Comment content validation rejection with 422
+   * API-24: Comment and Note content validation rejection with 422
    * BR-13
    */
   it("API-24: rejects empty or whitespace-only comment submissions with HTTP 422 Unprocessable Entity (BR-13)", async () => {
@@ -173,5 +173,102 @@ describe("Lab 3 Comments API Tests (API-21, API-24)", () => {
 
     expect(resMissing.status).toBe(422);
     expect(resMissing.body).toHaveProperty("error");
+  });
+
+  /**
+   * API-08 & API-22: Requester forbidden from accessing or posting Internal Notes
+   * AC-09, BR-04
+   */
+  it("API-08 & API-22: strictly forbids Requesters from reading or creating Internal Notes with HTTP 403 (AC-09, BR-04)", async () => {
+    // Requester attempts to GET internal notes
+    const getRes = await request(app)
+      .get(`/api/tickets/${jenniferTicketId}/notes`)
+      .set("Authorization", `Bearer ${jenniferToken}`);
+
+    expect(getRes.status).toBe(403);
+    expect(getRes.body).toHaveProperty("error");
+
+    // Requester attempts to POST internal note
+    const postRes = await request(app)
+      .post(`/api/tickets/${jenniferTicketId}/notes`)
+      .set("Authorization", `Bearer ${jenniferToken}`)
+      .send({ content: "Requester trying to write internal note" });
+
+    expect(postRes.status).toBe(403);
+    expect(postRes.body).toHaveProperty("error");
+  });
+
+  /**
+   * API-23: IT Staff creates and reads Internal Notes
+   * AC-15, BR-04
+   */
+  it("API-23: allows IT Staff to create and retrieve private Internal Notes in chronological order (AC-15, BR-04)", async () => {
+    // 1. Staff posts internal note 1
+    const postRes1 = await request(app)
+      .post(`/api/tickets/${jenniferTicketId}/notes`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({
+        content: "Root cause is thermal paste degradation on CPU heatsink.",
+      });
+
+    expect(postRes1.status).toBe(201);
+    expect(postRes1.body).toHaveProperty("id");
+    expect(postRes1.body).toHaveProperty("ticketId", jenniferTicketId);
+    expect(postRes1.body.content).toBe("Root cause is thermal paste degradation on CPU heatsink.");
+    expect(postRes1.body).toHaveProperty("createdAt");
+    expect(postRes1.body).toHaveProperty("author");
+    expect(postRes1.body.author).toEqual({
+      id: expect.any(Number),
+      name: "Michael Brown",
+      role: "IT_STAFF",
+    });
+
+    // 2. Staff posts internal note 2
+    const postRes2 = await request(app)
+      .post(`/api/tickets/${jenniferTicketId}/notes`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({
+        content: "Ordered Arctic Silver 5 thermal compound from IT inventory.",
+      });
+
+    expect(postRes2.status).toBe(201);
+
+    // 3. Staff fetches internal notes
+    const getRes = await request(app)
+      .get(`/api/tickets/${jenniferTicketId}/notes`)
+      .set("Authorization", `Bearer ${staffToken}`);
+
+    expect(getRes.status).toBe(200);
+    expect(Array.isArray(getRes.body)).toBe(true);
+    expect(getRes.body.length).toBeGreaterThanOrEqual(2);
+    expect(getRes.body[0].content).toBe("Root cause is thermal paste degradation on CPU heatsink.");
+    expect(getRes.body[1].content).toBe("Ordered Arctic Silver 5 thermal compound from IT inventory.");
+  });
+
+  /**
+   * API-24: Internal Note content validation rejection with 422
+   * BR-13
+   */
+  it("API-24: rejects empty, whitespace-only, or overly long internal notes with HTTP 422 (BR-13)", async () => {
+    // Empty content
+    const resEmpty = await request(app)
+      .post(`/api/tickets/${jenniferTicketId}/notes`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({ content: "" });
+    expect(resEmpty.status).toBe(422);
+
+    // Whitespace only
+    const resWhitespace = await request(app)
+      .post(`/api/tickets/${jenniferTicketId}/notes`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({ content: "   \t\n   " });
+    expect(resWhitespace.status).toBe(422);
+
+    // Exceeding 2000 chars
+    const resTooLong = await request(app)
+      .post(`/api/tickets/${jenniferTicketId}/notes`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({ content: "N".repeat(2001) });
+    expect(resTooLong.status).toBe(422);
   });
 });

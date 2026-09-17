@@ -6,6 +6,7 @@ export type AppView =
   | "login"
   | "change-password"
   | "queue"
+  | "staff-ticket-detail"
   | "user-management";
 
 export function isViewPermittedForRole(view: AppView, role?: string): boolean {
@@ -15,10 +16,10 @@ export function isViewPermittedForRole(view: AppView, role?: string): boolean {
     return ["portal", "my-tickets", "create-ticket", "ticket-detail"].includes(view);
   }
   if (role === "IT_STAFF") {
-    return ["portal", "my-tickets", "create-ticket", "ticket-detail", "queue"].includes(view);
+    return ["portal", "my-tickets", "create-ticket", "ticket-detail", "queue", "staff-ticket-detail"].includes(view);
   }
   if (role === "ADMINISTRATOR") {
-    return ["portal", "my-tickets", "create-ticket", "ticket-detail", "user-management", "queue"].includes(view);
+    return ["portal", "my-tickets", "create-ticket", "ticket-detail", "user-management", "queue", "staff-ticket-detail"].includes(view);
   }
   return false;
 }
@@ -47,6 +48,8 @@ export function viewToPath(view: AppView, ticketId?: number | null): string {
       return ticketId ? `/tickets/${ticketId}` : "/tickets";
     case "queue":
       return "/queue";
+    case "staff-ticket-detail":
+      return ticketId ? `/queue/${ticketId}` : "/queue";
     case "user-management":
       return "/admin/users";
     case "my-tickets":
@@ -69,6 +72,10 @@ export function pathToView(pathname: string): { view: AppView; ticketId: number 
   const match = pathname.match(/^\/tickets\/(\d+)$/);
   if (match) {
     return { view: "ticket-detail", ticketId: parseInt(match[1], 10) };
+  }
+  const queueMatch = pathname.match(/^\/queue\/(\d+)$/);
+  if (queueMatch) {
+    return { view: "staff-ticket-detail", ticketId: parseInt(queueMatch[1], 10) };
   }
   if (pathname === "/queue") {
     return { view: "queue", ticketId: null };

@@ -66,3 +66,68 @@ export async function postPublicComment(
     next(error);
   }
 }
+
+export async function getInternalNotes(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const userResolution = await resolveRequester(req);
+    if (userResolution === "unauthorized") {
+      res.status(401).json({ error: "Unauthorized: Missing authentication credentials." });
+      return;
+    }
+    if (userResolution === "inactive") {
+      res.status(403).json({ error: "Forbidden: Account is inactive or does not exist." });
+      return;
+    }
+
+    const ticketId = parseInt(req.params.id, 10);
+    if (isNaN(ticketId)) {
+      res.status(400).json({ error: "Invalid ticket ID provided." });
+      return;
+    }
+
+    const notes = await commentsNotesService.fetchInternalNotes(
+      ticketId,
+      userResolution
+    );
+    res.status(200).json(notes);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function postInternalNote(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const userResolution = await resolveRequester(req);
+    if (userResolution === "unauthorized") {
+      res.status(401).json({ error: "Unauthorized: Missing authentication credentials." });
+      return;
+    }
+    if (userResolution === "inactive") {
+      res.status(403).json({ error: "Forbidden: Account is inactive or does not exist." });
+      return;
+    }
+
+    const ticketId = parseInt(req.params.id, 10);
+    if (isNaN(ticketId)) {
+      res.status(400).json({ error: "Invalid ticket ID provided." });
+      return;
+    }
+
+    const note = await commentsNotesService.createInternalNote(
+      ticketId,
+      req.body,
+      userResolution
+    );
+    res.status(201).json(note);
+  } catch (error) {
+    next(error);
+  }
+}
