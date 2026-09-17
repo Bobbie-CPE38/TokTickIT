@@ -379,7 +379,7 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
             </div>
           </div>
 
-          <div className="row g-3 align-items-center mb-3">
+          <div className="row g-3 align-items-center pb-2 mb-2">
             <div className="col-12 col-md-4">
               <span className="text-muted small d-block">Requester:</span>
               <span className="fw-semibold text-dark">{ticket.requester.name}</span>
@@ -418,7 +418,7 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
           </div>
 
           {/* Operational Dropdowns: Ticket Owner & IT Priority */}
-          <div className="row g-3 pt-3 border-top">
+          <div className="row g-3 mt-1 pt-3 border-top">
             <div className="col-12 col-md-4">
               <label htmlFor="staff-owner-select" className="text-muted small d-block mb-1">
                 Ticket Owner:
