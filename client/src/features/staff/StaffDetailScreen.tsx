@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext.js";
 import { useRouter } from "../../core/router/RouterContext.js";
 import * as api from "../../api.js";
-import { StatusBadge } from "../../components/common/StatusBadge.js";
 import { PriorityBadge } from "../../components/common/PriorityBadge.js";
 import { AttachmentList } from "../attachments/AttachmentList.js";
 
@@ -399,7 +398,7 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                   id="staff-status-select"
                   aria-label="Current Status"
                   className="form-select form-select-sm"
-                  style={{ borderColor: "#D1D5DB", maxWidth: "200px" }}
+                  style={{ borderColor: "#D1D5DB" }}
                   value={ticket.currentStatus}
                   onChange={handleStatusSelect}
                   disabled={updatingStatus || permittedNext.length === 0}
@@ -413,7 +412,7 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                     </option>
                   ))}
                 </select>
-                <StatusBadge status={ticket.currentStatus} />
+                {updatingStatus && <span className="spinner-border spinner-border-sm text-secondary" />}
               </div>
             </div>
           </div>
@@ -469,7 +468,6 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                   <option value="HIGH">High</option>
                   <option value="URGENT">Urgent</option>
                 </select>
-                <PriorityBadge priority={ticket.itPriority} />
                 {updatingPriority && <span className="spinner-border spinner-border-sm text-secondary" />}
               </div>
             </div>

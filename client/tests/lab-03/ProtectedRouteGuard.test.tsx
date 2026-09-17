@@ -331,9 +331,12 @@ describe("Protected Route Guard and Intended Destination UI Tests", () => {
     vi.spyOn(api, "fetchCurrentUser").mockResolvedValue(mockStaffUser);
     vi.spyOn(api, "fetchStaffTicketDetail").mockResolvedValue({
       ...mockTicketDetail,
+      requester: { ...mockTicketDetail.requester, role: "REQUESTER" },
+      ticketOwnerId: null,
+      isRequesterResolved: false,
       publicComments: [],
       internalNotes: [],
-    });
+    } as any);
     vi.spyOn(api, "fetchStaffAssignees").mockResolvedValue([]);
 
     render(<App />);
