@@ -82,4 +82,17 @@ describe("RouterContext (Zero-Dependency History Router)", () => {
     expect(screen.getByTestId("path").textContent).toBe("/tickets/303");
     expect(screen.getByTestId("ticket-id").textContent).toBe("303");
   });
+
+  it("extracts ticketId for both /tickets/:id and /queue/:id routes", () => {
+    window.history.pushState({}, "", "/queue/305");
+
+    render(
+      <RouterProvider>
+        <TestConsumer />
+      </RouterProvider>
+    );
+
+    expect(screen.getByTestId("path").textContent).toBe("/queue/305");
+    expect(screen.getByTestId("ticket-id").textContent).toBe("305");
+  });
 });

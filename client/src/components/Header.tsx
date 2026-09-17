@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.js";
+import { getDefaultViewForRole } from "../core/router/RouteGuard.js";
 
 export type HeaderView =
   | "portal"
@@ -102,7 +103,8 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
             onClick={(e) => {
               e.preventDefault();
               if (auth?.isAuthenticated && !auth?.mustChangePassword) {
-                onNavigate?.("my-tickets");
+                const defaultView = getDefaultViewForRole(activeUser?.role);
+                onNavigate?.(defaultView as HeaderView);
               } else if (!auth?.isAuthenticated) {
                 onNavigate?.("login");
               }

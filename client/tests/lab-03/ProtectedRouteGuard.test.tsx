@@ -22,6 +22,15 @@ const mockMustChangeUser: api.AuthUser = {
   mustChangePassword: true,
 };
 
+const mockStaffUser: api.AuthUser = {
+  id: 3,
+  name: "Michael Brown",
+  email: "staff.michael@toktickit.com",
+  role: "IT_STAFF",
+  isActive: true,
+  mustChangePassword: false,
+};
+
 const mockTicketList: api.TicketListResponse = {
   data: [
     {
@@ -275,5 +284,63 @@ describe("Protected Route Guard and Intended Destination UI Tests", () => {
     });
     expect(screen.getByRole("heading", { name: /sign in to your account/i })).toBeInTheDocument();
     expect(screen.queryByText(/Create New IT Support Ticket/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * 7. IT Staff default landing page is /queue upon login
+   */
+  it("redirects IT Staff to /queue upon successful login when no deep-link destination was requested", async () => {
+    window.history.pushState({}, "", "/login");
+
+    vi.spyOn(api, "login").mockResolvedValue({
+      token: "valid-staff-jwt-token",
+      user: mockStaffUser,
+    });
+    vi.spyOn(api, "fetchCurrentUser").mockResolvedValue(mockStaffUser);
+    vi.spyOn(api, "fetchStaffTickets").mockResolvedValue({
+      data: [],
+      pagination: { total: 0, page: 1, pageSize: 10, totalPages: 1 },
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: /sign in to your account/i })).toBeInTheDocument();
+
+    const emailInput = screen.getByLabelText(/email address/i);
+    const passwordInput = screen.getByLabelText(/^password/i);
+    const submitBtn = screen.getByRole("button", { name: /sign in/i });
+
+    fireEvent.change(emailInput, { target: { value: "staff.michael@toktickit.com" } });
+    fireEvent.change(passwordInput, { target: { value: "Password123!" } });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/queue");
+    });
+    expect(await screen.findByRole("heading", { name: /IT Staff Ticket Queue/i })).toBeInTheDocument();
+  });
+
+  /**
+   * 8. Navigating to /queue/:id renders staff ticket detail correctly
+   */
+  it("renders StaffDetailScreen when navigating to /queue/:id", async () => {
+    localStorage.setItem("toktickit_auth_token", "valid-staff-token");
+    localStorage.setItem("toktickit_auth_user", JSON.stringify(mockStaffUser));
+    window.history.pushState({}, "", "/queue/101");
+
+    vi.spyOn(api, "fetchCurrentUser").mockResolvedValue(mockStaffUser);
+    vi.spyOn(api, "fetchStaffTicketDetail").mockResolvedValue({
+      ...mockTicketDetail,
+      publicComments: [],
+      internalNotes: [],
+    });
+    vi.spyOn(api, "fetchStaffAssignees").mockResolvedValue([]);
+
+    render(<App />);
+
+    expect(await screen.findByText(/TKT-2026-000101/i)).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/queue/101");
+    // Ensure My Tickets header is NOT rendered
+    expect(screen.queryByRole("heading", { name: /^my tickets$/i })).not.toBeInTheDocument();
   });
 });

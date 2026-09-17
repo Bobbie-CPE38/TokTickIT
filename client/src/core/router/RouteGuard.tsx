@@ -27,9 +27,9 @@ export function isViewPermittedForRole(view: AppView, role?: string): boolean {
 export function getDefaultViewForRole(role?: string): AppView {
   switch (role) {
     case "IT_STAFF":
-      return "my-tickets";
+      return "queue";
     case "ADMINISTRATOR":
-      return "my-tickets";
+      return "user-management";
     case "REQUESTER":
     default:
       return "my-tickets";

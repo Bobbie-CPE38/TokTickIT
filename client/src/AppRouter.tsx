@@ -2,6 +2,7 @@ import React, { useEffect, useCallback } from "react";
 import { useAuth } from "./context/AuthContext.js";
 import { useRouter } from "./core/router/RouterContext.js";
 import {
+  getDefaultViewForRole,
   isViewPermittedForRole,
   pathToView,
   viewToPath,
@@ -30,7 +31,9 @@ export function AppRouter() {
     clearIntendedDestination,
   } = useRouter();
 
-  const { view } = pathToView(currentPath);
+  const parsedRoute = pathToView(currentPath);
+  const view = parsedRoute.view;
+  const activeTicketId = parsedRoute.ticketId ?? ticketId;
 
   const handlePostAuthRedirect = useCallback(
     (userRole?: string) => {
@@ -41,8 +44,13 @@ export function AppRouter() {
           ? JSON.parse(localStorage.getItem("toktickit_auth_user") || "{}").role
           : undefined);
 
+      const defaultView = getDefaultViewForRole(role);
+      const defaultPath = viewToPath(defaultView);
+
       if (
         intendedDestination &&
+        intendedDestination.path !== "/" &&
+        intendedDestination.path !== "/login" &&
         isViewPermittedForRole(pathToView(intendedDestination.path).view, role)
       ) {
         const dest = intendedDestination.path;
@@ -50,7 +58,7 @@ export function AppRouter() {
         navigateTo(dest);
       } else {
         clearIntendedDestination();
-        navigateTo("/tickets");
+        navigateTo(defaultPath);
       }
     },
     [auth.user?.role, intendedDestination, clearIntendedDestination, navigateTo]
@@ -69,8 +77,8 @@ export function AppRouter() {
 
     if (!auth.isAuthenticated) {
       if (currentPath !== "/login") {
-        if (currentPath !== "/change-password") {
-          setIntendedDestination((prev) => prev ?? { path: currentPath, ticketId });
+        if (currentPath !== "/change-password" && currentPath !== "/") {
+          setIntendedDestination((prev) => prev ?? { path: currentPath, ticketId: activeTicketId });
         }
         replaceTo("/login");
       }
@@ -80,8 +88,12 @@ export function AppRouter() {
       }
     } else if (currentPath === "/login" || (currentPath === "/change-password" && intendedDestination)) {
       handlePostAuthRedirect();
+    } else if (currentPath === "/") {
+      const defaultView = getDefaultViewForRole(auth.user?.role);
+      replaceTo(viewToPath(defaultView));
     } else if (auth.user && !isViewPermittedForRole(view, auth.user.role)) {
-      replaceTo("/tickets");
+      const defaultView = getDefaultViewForRole(auth.user.role);
+      replaceTo(viewToPath(defaultView));
     }
   }, [
     auth.loading,
@@ -94,6 +106,7 @@ export function AppRouter() {
     replaceTo,
     setIntendedDestination,
     handlePostAuthRedirect,
+    activeTicketId,
   ]);
 
   if (auth.loading && auth.token) {
@@ -145,14 +158,14 @@ export function AppRouter() {
     if (view === "create-ticket") {
       return <CreateTicketScreen onCancel={() => navigateTo("/tickets")} />;
     }
-    if (view === "ticket-detail" && ticketId) {
-      return <RequesterDetailScreen ticketId={ticketId} onBack={() => navigateTo("/tickets")} />;
+    if (view === "ticket-detail" && activeTicketId) {
+      return <RequesterDetailScreen ticketId={activeTicketId} onBack={() => navigateTo("/tickets")} />;
     }
     if (view === "queue") {
       return <StaffQueueScreen />;
     }
-    if (view === "staff-ticket-detail" && ticketId) {
-      return <StaffDetailScreen ticketId={ticketId} onBack={() => navigateTo("/queue")} />;
+    if (view === "staff-ticket-detail" && activeTicketId) {
+      return <StaffDetailScreen ticketId={activeTicketId} onBack={() => navigateTo("/queue")} />;
     }
     if (view === "user-management") {
       return <UserManagementScreen />;
