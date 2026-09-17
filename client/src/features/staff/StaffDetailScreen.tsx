@@ -434,11 +434,6 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                   disabled={updatingOwner}
                 >
                   <option value="">Unassigned</option>
-                  {authUser && (authUser.role === "IT_STAFF" || authUser.role === "ADMINISTRATOR") && (
-                    <option value={authUser.id}>
-                      Claim Ticket ({authUser.name})
-                    </option>
-                  )}
                   {assignees.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.name} ({user.role === "ADMINISTRATOR" ? "Admin" : "IT Staff"})
