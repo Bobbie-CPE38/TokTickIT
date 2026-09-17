@@ -404,7 +404,7 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                   disabled={updatingStatus || permittedNext.length === 0}
                 >
                   <option value={ticket.currentStatus}>
-                    {ticket.currentStatus.replace(/_/g, " ")} (Current)
+                    {ticket.currentStatus.replace(/_/g, " ")}
                   </option>
                   {permittedNext.map((st) => (
                     <option key={st} value={st}>
