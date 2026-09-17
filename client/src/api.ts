@@ -625,3 +625,82 @@ export async function createPublicComment(
 
   return res.json();
 }
+
+export interface StaffTicket {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  category: { id: number; name: string } | null;
+  requestedPriority: Priority;
+  itPriority: Priority;
+  currentStatus: TicketStatus;
+  ticketOwner: { id: number; name: string; email: string } | null;
+  isRequesterResolved: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StaffQueueResponse {
+  data: StaffTicket[];
+  pagination: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
+export interface StaffQueueParams {
+  search?: string;
+  status?: string;
+  categoryId?: number;
+  requestedPriority?: string;
+  itPriority?: string;
+  ticketOwnerId?: number | "unassigned";
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export async function fetchStaffTickets(
+  params: StaffQueueParams = {}
+): Promise<StaffQueueResponse> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.status) query.set("status", params.status);
+  if (params.categoryId !== undefined && params.categoryId !== null) {
+    query.set("categoryId", String(params.categoryId));
+  }
+  if (params.requestedPriority) query.set("requestedPriority", params.requestedPriority);
+  if (params.itPriority) query.set("itPriority", params.itPriority);
+  if (params.ticketOwnerId !== undefined && params.ticketOwnerId !== null) {
+    query.set("ticketOwnerId", String(params.ticketOwnerId));
+  }
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortOrder) query.set("sortOrder", params.sortOrder);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+
+  const queryString = query.toString();
+  const url = `${API_URL}/api/staff/tickets${queryString ? `?${queryString}` : ""}`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to fetch staff tickets with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
