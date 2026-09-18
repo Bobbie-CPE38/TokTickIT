@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import { useAuth } from "./context/AuthContext.js";
 import { useRouter } from "./core/router/RouterContext.js";
 import {
@@ -30,6 +30,8 @@ export function AppRouter() {
     setIntendedDestination,
     clearIntendedDestination,
   } = useRouter();
+
+  const wasAuthenticatedRef = useRef(auth.isAuthenticated);
 
   const parsedRoute = pathToView(currentPath);
   const view = parsedRoute.view;
@@ -76,24 +78,34 @@ export function AppRouter() {
       auth.mustChangePassword && (storedUser.mustChangePassword ?? true);
 
     if (!auth.isAuthenticated) {
-      if (currentPath !== "/login") {
+      if (wasAuthenticatedRef.current) {
+        // User explicitly logged out: clear stale intended destination from previous session
+        clearIntendedDestination();
+        wasAuthenticatedRef.current = false;
+        if (currentPath !== "/login") {
+          replaceTo("/login");
+        }
+      } else if (currentPath !== "/login") {
         if (currentPath !== "/change-password" && currentPath !== "/") {
           setIntendedDestination((prev) => prev ?? { path: currentPath, ticketId: activeTicketId });
         }
         replaceTo("/login");
       }
-    } else if (effectiveMustChange) {
-      if (currentPath !== "/change-password") {
-        replaceTo("/change-password");
+    } else {
+      wasAuthenticatedRef.current = true;
+      if (effectiveMustChange) {
+        if (currentPath !== "/change-password") {
+          replaceTo("/change-password");
+        }
+      } else if (currentPath === "/login" || (currentPath === "/change-password" && intendedDestination)) {
+        handlePostAuthRedirect();
+      } else if (currentPath === "/") {
+        const defaultView = getDefaultViewForRole(auth.user?.role);
+        replaceTo(viewToPath(defaultView));
+      } else if (auth.user && !isViewPermittedForRole(view, auth.user.role)) {
+        const defaultView = getDefaultViewForRole(auth.user.role);
+        replaceTo(viewToPath(defaultView));
       }
-    } else if (currentPath === "/login" || (currentPath === "/change-password" && intendedDestination)) {
-      handlePostAuthRedirect();
-    } else if (currentPath === "/") {
-      const defaultView = getDefaultViewForRole(auth.user?.role);
-      replaceTo(viewToPath(defaultView));
-    } else if (auth.user && !isViewPermittedForRole(view, auth.user.role)) {
-      const defaultView = getDefaultViewForRole(auth.user.role);
-      replaceTo(viewToPath(defaultView));
     }
   }, [
     auth.loading,
