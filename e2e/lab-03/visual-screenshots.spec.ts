@@ -282,6 +282,8 @@ test.describe("Visual Responsive Screenshots & Layout Audits", () => {
     // 03-user-management-mobile.png (375x667)
     await page.setViewportSize({ width: 375, height: 667 });
     await assertZeroHorizontalOverflow(page);
+    await expect(page.locator('[data-testid="admin-user-card"]').first()).toBeVisible();
+    await assertTouchTargetHeight(page, '[data-testid="admin-user-card"] button:has-text("Edit")', 44);
     await page.screenshot({
       path: path.join(screenshotsBase, "user-management", "03-user-management-mobile.png"),
       fullPage: true,

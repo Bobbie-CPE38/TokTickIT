@@ -1,4 +1,4 @@
-﻿import { test, expect } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { execSync } from "child_process";
 
 test.describe("Administrator User Management (E2E-04)", () => {
@@ -52,6 +52,7 @@ test.describe("Administrator User Management (E2E-04)", () => {
 
   test("AC-17, AC-22, AC-23, BR-16, BR-19: Create user, edit user, reset password, and enforce safety guards", async ({
     page,
+    isMobile,
   }) => {
     // -------------------------------------------------------------
     // Step 1: Create New User with Initial Password (AC-17, BR-19)
@@ -76,17 +77,19 @@ test.describe("Administrator User Management (E2E-04)", () => {
     // Drawer closes automatically upon success
     await expect(drawer).not.toBeVisible();
 
-    // Verify user appears in table
-    const userRow = page.locator(`tr:has-text("${uniqueEmail}")`);
-    await expect(userRow).toBeVisible();
-    await expect(userRow).toContainText("Alex Thompson");
-    await expect(userRow).toContainText("IT Staff");
-    await expect(userRow).toContainText("Active");
+    // Verify user appears in table or card
+    const userElement = isMobile
+      ? page.locator(`[data-testid="admin-user-card"]:has-text("${uniqueEmail}")`)
+      : page.locator(`tr:has-text("${uniqueEmail}")`);
+    await expect(userElement).toBeVisible();
+    await expect(userElement).toContainText("Alex Thompson");
+    await expect(userElement).toContainText("IT Staff");
+    await expect(userElement).toContainText("Active");
 
     // -------------------------------------------------------------
     // Step 2: Edit User (AC-22, FR-25)
     // -------------------------------------------------------------
-    await userRow.locator('button:has-text("Edit")').click();
+    await userElement.locator('button:has-text("Edit")').click();
     await expect(drawer).toBeVisible();
     await expect(drawer.locator("h2")).toContainText("Edit User");
 
@@ -109,13 +112,15 @@ test.describe("Administrator User Management (E2E-04)", () => {
     await expect(drawer).not.toBeVisible();
 
     // Verify table shows updated name
-    await expect(page.locator(`tr:has-text("${uniqueEmail}")`)).toContainText("Alex Thompson Updated");
+    await expect(userElement).toContainText("Alex Thompson Updated");
 
     // -------------------------------------------------------------
     // Step 4: Administrator Safety Guards (AC-19, BR-16)
     // -------------------------------------------------------------
-    const adminRow = page.locator('tr:has-text("John Smith")');
-    await adminRow.locator('button:has-text("Edit")').click();
+    const adminElement = isMobile
+      ? page.locator('[data-testid="admin-user-card"]:has-text("John Smith")')
+      : page.locator('tr:has-text("John Smith")');
+    await adminElement.locator('button:has-text("Edit")').click();
     await expect(drawer).toBeVisible();
     await expect(drawer.locator("h2")).toContainText("Edit User");
 
