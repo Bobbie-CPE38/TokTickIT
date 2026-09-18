@@ -178,11 +178,11 @@ export const ChangePasswordScreen: React.FC<ChangePasswordProps> = ({ onSuccess 
               />
               <button
                 type="button"
-                className="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted pe-3 text-decoration-none"
+                className="btn p-0 position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center text-muted border-0 bg-transparent"
                 onClick={() => setShowCurrent((prev) => !prev)}
                 tabIndex={-1}
                 aria-label={showCurrent ? "Hide current password" : "Show current password"}
-                style={{ color: "#52665D" }}
+                style={{ width: "38px", color: "#52665D" }}
               >
                 <EyeToggleIcon isVisible={showCurrent} />
               </button>
@@ -213,11 +213,11 @@ export const ChangePasswordScreen: React.FC<ChangePasswordProps> = ({ onSuccess 
               />
               <button
                 type="button"
-                className="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted pe-3 text-decoration-none"
+                className="btn p-0 position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center text-muted border-0 bg-transparent"
                 onClick={() => setShowNew((prev) => !prev)}
                 tabIndex={-1}
                 aria-label={showNew ? "Hide new password" : "Show new password"}
-                style={{ color: "#52665D" }}
+                style={{ width: "38px", color: "#52665D" }}
               >
                 <EyeToggleIcon isVisible={showNew} />
               </button>
@@ -248,11 +248,11 @@ export const ChangePasswordScreen: React.FC<ChangePasswordProps> = ({ onSuccess 
               />
               <button
                 type="button"
-                className="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted pe-3 text-decoration-none"
+                className="btn p-0 position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center text-muted border-0 bg-transparent"
                 onClick={() => setShowConfirm((prev) => !prev)}
                 tabIndex={-1}
                 aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
-                style={{ color: "#52665D" }}
+                style={{ width: "38px", color: "#52665D" }}
               >
                 <EyeToggleIcon isVisible={showConfirm} />
               </button>
@@ -334,6 +334,20 @@ export const ChangePasswordScreen: React.FC<ChangePasswordProps> = ({ onSuccess 
               <span>Continue</span>
             )}
           </button>
+
+          {/* Cancel & Sign Out Option */}
+          <div className="text-center mt-3">
+            <button
+              type="button"
+              className="btn btn-link text-muted p-0 text-decoration-none"
+              style={{ fontSize: "0.875rem", cursor: "pointer" }}
+              onClick={async () => {
+                await auth.logout();
+              }}
+            >
+              Sign Out / Cancel
+            </button>
+          </div>
         </form>
       </div>
     </div>

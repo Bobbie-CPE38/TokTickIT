@@ -201,5 +201,24 @@ describe("Lab 3 Authorization & Requester Session Isolation API Tests (API-09, A
       .set("Authorization", `Bearer ${davidToken}`);
     expect(davidDownloadRes.status).toBe(404);
   });
+
+  /**
+   * API-34: IT Staff and Requesters forbidden from accessing Administrator APIs
+   * AC-21, FR-09
+   */
+  it("API-34: strictly rejects IT Staff and Requesters with HTTP 403 Forbidden on GET /api/admin/users (AC-21, FR-09)", async () => {
+    // 1. IT Staff access attempt
+    const staffRes = await request(app)
+      .get("/api/admin/users")
+      .set("Authorization", `Bearer ${staffToken}`);
+    expect(staffRes.status).toBe(403);
+
+    // 2. Requester access attempt
+    const requesterRes = await request(app)
+      .get("/api/admin/users")
+      .set("Authorization", `Bearer ${jenniferToken}`);
+    expect(requesterRes.status).toBe(403);
+  });
 });
+
 

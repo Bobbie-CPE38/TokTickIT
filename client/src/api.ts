@@ -911,4 +911,142 @@ export async function fetchStaffAssignees(): Promise<StaffAssignee[]> {
   return res.json();
 }
 
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateUserPayload {
+  name: string;
+  email: string;
+  role: Role;
+  isActive?: boolean;
+  initialPassword: string;
+}
+
+export interface UpdateUserPayload {
+  name?: string;
+  email?: string;
+  role?: Role;
+  isActive?: boolean;
+}
+
+export async function fetchAdminUsers(
+  search?: string,
+  role?: string
+): Promise<AdminUser[]> {
+  const params = new URLSearchParams();
+  if (search && search.trim()) params.append("search", search.trim());
+  if (role && role !== "ALL") params.append("role", role);
+
+  const queryStr = params.toString() ? `?${params.toString()}` : "";
+  const url = `${API_URL}/api/admin/users${queryStr}`;
+
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to fetch users with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function createAdminUser(
+  data: CreateUserPayload
+): Promise<AdminUser> {
+  const url = `${API_URL}/api/admin/users`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to create user with status ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body.details && Array.isArray(body.details)) {
+        errorMsg = body.details.join(", ");
+      } else if (body.error) {
+        errorMsg = body.error;
+      }
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function updateAdminUser(
+  id: number,
+  data: UpdateUserPayload
+): Promise<AdminUser> {
+  const url = `${API_URL}/api/admin/users/${id}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to update user with status ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body.details && Array.isArray(body.details)) {
+        errorMsg = body.details.join(", ");
+      } else if (body.error) {
+        errorMsg = body.error;
+      }
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function resetUserInitialPassword(
+  id: number,
+  initialPassword: string
+): Promise<{ message: string; userId: number; mustChangePassword: boolean }> {
+  const url = `${API_URL}/api/admin/users/${id}/reset-password`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ initialPassword }),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to reset password with status ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body.details && Array.isArray(body.details)) {
+        errorMsg = body.details.join(", ");
+      } else if (body.error) {
+        errorMsg = body.error;
+      }
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+
 
