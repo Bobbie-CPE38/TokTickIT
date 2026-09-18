@@ -1,5 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 
+try {
+  process.loadEnvFile?.();
+} catch {}
+
 export interface CompatiblePrismaClient extends Omit<PrismaClient, "attachment" | "ticket"> {
   developmentRequester: any;
   attachment: any;
