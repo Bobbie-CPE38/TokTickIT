@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.js";
+import { getDefaultViewForRole } from "../core/router/RouteGuard.js";
 
 export type HeaderView =
   | "portal"
@@ -9,6 +10,7 @@ export type HeaderView =
   | "login"
   | "change-password"
   | "queue"
+  | "staff-ticket-detail"
   | "user-management";
 
 interface HeaderProps {
@@ -101,7 +103,8 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
             onClick={(e) => {
               e.preventDefault();
               if (auth?.isAuthenticated && !auth?.mustChangePassword) {
-                onNavigate?.("my-tickets");
+                const defaultView = getDefaultViewForRole(activeUser?.role);
+                onNavigate?.(defaultView as HeaderView);
               } else if (!auth?.isAuthenticated) {
                 onNavigate?.("login");
               }
@@ -173,9 +176,9 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
                   className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-2 px-2 py-1 small fw-medium"
                   style={{
                     fontSize: "0.9rem",
-                    opacity: currentView === "queue" ? 1 : 0.85,
+                    opacity: currentView === "queue" || currentView === "staff-ticket-detail" ? 1 : 0.85,
                     borderBottom:
-                      currentView === "queue"
+                      currentView === "queue" || currentView === "staff-ticket-detail"
                         ? "2px solid #FFFFFF"
                         : "2px solid transparent",
                     borderRadius: 0,

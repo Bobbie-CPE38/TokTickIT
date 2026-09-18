@@ -25,7 +25,7 @@ export interface RouterContextType {
 const RouterContext = createContext<RouterContextType | undefined>(undefined);
 
 function parseTicketId(path: string): number | null {
-  const match = path.match(/^\/tickets\/(\d+)$/);
+  const match = path.match(/^\/(?:tickets|queue)\/(\d+)$/);
   return match ? parseInt(match[1], 10) : null;
 }
 
@@ -42,7 +42,7 @@ export const RouterProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [ticketId, setTicketId] = useState<number | null>(() => parseTicketId(getWindowPath()));
   const [intendedDestination, setIntendedDestination] = useState<IntendedDestination | null>(() => {
     const p = getWindowPath();
-    if (p !== "/login" && p !== "/change-password") {
+    if (p !== "/" && p !== "/login" && p !== "/change-password") {
       return { path: p, ticketId: parseTicketId(p) };
     }
     return null;

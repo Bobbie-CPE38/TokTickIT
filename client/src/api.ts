@@ -704,3 +704,211 @@ export async function fetchStaffTickets(
   return res.json();
 }
 
+export interface InternalNote {
+  id: number;
+  ticketId: number;
+  content: string;
+  createdAt: string;
+  author: {
+    id: number;
+    name: string;
+    role: Role;
+  };
+}
+
+export interface StaffTicketDetail {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  description: string;
+  requestedPriority: Priority;
+  itPriority: Priority;
+  currentStatus: TicketStatus;
+  resolutionSummary: string | null;
+  isRequesterResolved: boolean;
+  requesterId: number;
+  requester: { id: number; name: string; email: string; role: Role };
+  ticketOwnerId: number | null;
+  ticketOwner: { id: number; name: string; email: string; role?: Role } | null;
+  categoryId: number;
+  category: { id: number; name: string } | null;
+  relatedSystemId: number;
+  relatedSystem: { id: number; name: string } | null;
+  attachments: Attachment[];
+  publicComments: PublicComment[];
+  internalNotes: InternalNote[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StaffAssignee {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+}
+
+export async function fetchStaffTicketDetail(ticketId: number): Promise<StaffTicketDetail> {
+  const url = `${API_URL}/api/staff/tickets/${ticketId}`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to fetch ticket detail with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.error) errorMsg = data.error;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function updateTicketAssignment(
+  ticketId: number,
+  ticketOwnerId: number | null
+): Promise<{ id: number; ticketNumber: string; ticketOwnerId: number | null; ticketOwner: any; updatedAt: string }> {
+  const url = `${API_URL}/api/staff/tickets/${ticketId}/assignment`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ ticketOwnerId }),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to assign ticket with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function updateTicketPriority(
+  ticketId: number,
+  itPriority: Priority
+): Promise<{ id: number; ticketNumber: string; requestedPriority: Priority; itPriority: Priority; updatedAt: string }> {
+  const url = `${API_URL}/api/staff/tickets/${ticketId}/priority`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ itPriority }),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to update IT Priority with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function updateTicketStatus(
+  ticketId: number,
+  currentStatus: TicketStatus,
+  resolutionSummary?: string
+): Promise<{ id: number; ticketNumber: string; currentStatus: TicketStatus; resolutionSummary?: string | null; updatedAt: string }> {
+  const url = `${API_URL}/api/staff/tickets/${ticketId}/status`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ currentStatus, resolutionSummary }),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to update status with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function fetchInternalNotes(ticketId: number): Promise<InternalNote[]> {
+  const url = `${API_URL}/api/tickets/${ticketId}/notes`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to fetch internal notes with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.error) errorMsg = data.error;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function createInternalNote(
+  ticketId: number,
+  content: string
+): Promise<InternalNote> {
+  const url = `${API_URL}/api/tickets/${ticketId}/notes`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ content }),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to post internal note with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.details && Array.isArray(data.details)) {
+        errorMsg = data.details.join(", ");
+      } else if (data.error) {
+        errorMsg = data.error;
+      }
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+export async function fetchStaffAssignees(): Promise<StaffAssignee[]> {
+  const url = `${API_URL}/api/staff/assignees`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Failed to fetch staff assignees with status ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data.error) errorMsg = data.error;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
+}
+
+
