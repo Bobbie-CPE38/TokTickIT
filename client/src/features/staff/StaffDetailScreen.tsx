@@ -163,10 +163,11 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
   };
 
   // Execute Status Update API Call
-  const executeStatusUpdate = async (nextStatus: api.TicketStatus, summary?: string) => {
+  const executeStatusUpdate = async (nextStatus: api.TicketStatus, summary?: string, isFromModal = false) => {
     if (!ticketId) return;
     setUpdatingStatus(true);
     setError(null);
+    setModalError(null);
     try {
       const res = await api.updateTicketStatus(ticketId, nextStatus, summary);
       setTicket((prev) =>
@@ -180,10 +181,15 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
       );
       setPendingStatus(null);
       setModalSummary("");
+      setModalError(null);
       setSuccessMessage(`Ticket status transitioned to ${nextStatus}.`);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      setError(err.message || "Failed to update ticket status.");
+      if (isFromModal || pendingStatus) {
+        setModalError(err.message || "Failed to update ticket status.");
+      } else {
+        setError(err.message || "Failed to update ticket status.");
+      }
     } finally {
       setUpdatingStatus(false);
     }
@@ -203,17 +209,39 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
         setModalError("Resolution summary must not exceed 1000 characters.");
         return;
       }
-      executeStatusUpdate("RESOLVED", trimmed);
+      executeStatusUpdate("RESOLVED", trimmed, true);
       return;
     }
 
     if (pendingStatus === "CLOSED") {
       const trimmed = modalSummary.trim();
-      executeStatusUpdate("CLOSED", trimmed || undefined);
+      if (trimmed.length > 0 && trimmed.length < 5) {
+        setModalError("Resolution summary must be between 5 and 1000 characters.");
+        return;
+      }
+      if (trimmed.length > 1000) {
+        setModalError("Resolution summary must not exceed 1000 characters.");
+        return;
+      }
+      executeStatusUpdate("CLOSED", trimmed || undefined, true);
       return;
     }
 
-    executeStatusUpdate(pendingStatus, modalSummary.trim() || undefined);
+    if (pendingStatus === "REOPENED") {
+      const trimmed = modalSummary.trim();
+      if (trimmed.length > 0 && trimmed.length < 5) {
+        setModalError("Reopen rationale must be between 5 and 1000 characters.");
+        return;
+      }
+      if (trimmed.length > 1000) {
+        setModalError("Reopen rationale must not exceed 1000 characters.");
+        return;
+      }
+      executeStatusUpdate("REOPENED", trimmed || undefined, true);
+      return;
+    }
+
+    executeStatusUpdate(pendingStatus, modalSummary.trim() || undefined, true);
   };
 
   // Post Public Comment
@@ -765,7 +793,10 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                   type="button"
                   className="btn-close"
                   aria-label="Close"
-                  onClick={() => setPendingStatus(null)}
+                  onClick={() => {
+                    setPendingStatus(null);
+                    setModalError(null);
+                  }}
                 />
               </div>
 
@@ -785,7 +816,10 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                       rows={3}
                       placeholder="e.g. Replaced faulty hardware unit and verified normal operation..."
                       value={modalSummary}
-                      onChange={(e) => setModalSummary(e.target.value)}
+                      onChange={(e) => {
+                        setModalSummary(e.target.value);
+                        if (modalError) setModalError(null);
+                      }}
                     />
                   </div>
                 )}
@@ -805,7 +839,10 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                       rows={3}
                       placeholder="Review or refine closing notes before finalizing..."
                       value={modalSummary}
-                      onChange={(e) => setModalSummary(e.target.value)}
+                      onChange={(e) => {
+                        setModalSummary(e.target.value);
+                        if (modalError) setModalError(null);
+                      }}
                     />
                   </div>
                 )}
@@ -825,7 +862,10 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                       rows={3}
                       placeholder="e.g. User reported problem recurring after firmware update..."
                       value={modalSummary}
-                      onChange={(e) => setModalSummary(e.target.value)}
+                      onChange={(e) => {
+                        setModalSummary(e.target.value);
+                        if (modalError) setModalError(null);
+                      }}
                     />
                   </div>
                 )}
@@ -847,7 +887,10 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-secondary"
-                  onClick={() => setPendingStatus(null)}
+                  onClick={() => {
+                    setPendingStatus(null);
+                    setModalError(null);
+                  }}
                 >
                   Cancel
                 </button>

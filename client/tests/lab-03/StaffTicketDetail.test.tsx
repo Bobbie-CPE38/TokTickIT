@@ -207,6 +207,43 @@ describe("Lab 3 Staff Ticket Detail UI Tests (UI-06, UI-07, UI-08)", () => {
     });
   });
 
+  it("UI-07b: displays validation errors inside modal when transitioning to CLOSED with invalid length", async () => {
+    const resolvedTicket = {
+      ...mockTicketDetail,
+      currentStatus: "RESOLVED",
+      resolutionSummary: "Initial resolution summary.",
+    };
+    vi.spyOn(api, "fetchStaffTicketDetail").mockResolvedValue(resolvedTicket);
+
+    renderWithProviders(<StaffDetailScreen ticketId={101} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("TKT-2026-000101")).toBeInTheDocument();
+    });
+
+    const statusSelect = screen.getByLabelText(/current status/i) as HTMLSelectElement;
+
+    // Transition to CLOSED
+    fireEvent.change(statusSelect, { target: { value: "CLOSED" } });
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /close ticket/i })).toBeInTheDocument();
+    });
+
+    const closeSummaryInput = screen.getByLabelText(/resolution summary/i) as HTMLTextAreaElement;
+    const confirmBtn = screen.getByRole("button", { name: /confirm close/i });
+
+    // Change to < 5 chars
+    fireEvent.change(closeSummaryInput, { target: { value: "Bad" } });
+    fireEvent.click(confirmBtn);
+
+    // Verify error is rendered inside the modal
+    expect(
+      screen.getByText("Resolution summary must be between 5 and 1000 characters.")
+    ).toBeInTheDocument();
+    expect(api.updateTicketStatus).not.toHaveBeenCalled();
+  });
+
   /**
    * UI-08: Visual Distinction Between Public Comments (Green) and Internal Notes (Amber)
    * AC-14, AC-15, Section 5.5, Section 6.1
