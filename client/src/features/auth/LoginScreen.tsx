@@ -175,11 +175,11 @@ export const LoginScreen: React.FC<LoginProps> = ({ onSuccess }) => {
               />
               <button
                 type="button"
-                className="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted pe-3 text-decoration-none"
+                className="btn p-0 position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center text-muted border-0 bg-transparent"
                 onClick={() => setShowPassword((prev) => !prev)}
                 tabIndex={-1}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                style={{ color: "#52665D" }}
+                style={{ width: "38px", color: "#52665D" }}
               >
                 <EyeToggleIcon isVisible={showPassword} />
               </button>

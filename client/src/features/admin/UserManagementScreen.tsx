@@ -495,10 +495,13 @@ export const UserManagementScreen: React.FC = () => {
             className="modal-dialog modal-dialog-scrollable"
             style={{ maxWidth: "520px", margin: "1.75rem auto" }}
           >
-            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "8px" }}>
+            <div
+              className="modal-content border-0 shadow-lg"
+              style={{ borderRadius: "8px", maxHeight: "calc(100vh - 3.5rem)", display: "flex", flexDirection: "column" }}
+            >
               {/* Drawer Header */}
               <div
-                className="modal-header py-3 px-4"
+                className="modal-header py-3 px-4 flex-shrink-0"
                 style={{ backgroundColor: "#EAF6EF", borderBottom: "1px solid #C2E2D3" }}
               >
                 <h2 className="modal-title h5 fw-bold" style={{ color: "#006B3C" }}>
@@ -513,8 +516,11 @@ export const UserManagementScreen: React.FC = () => {
               </div>
 
               {/* Drawer Body Form */}
-              <form onSubmit={handleSaveUser}>
-                <div className="modal-body p-4" style={{ fontSize: "0.875rem" }}>
+              <form
+                onSubmit={handleSaveUser}
+                style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", overflow: "hidden" }}
+              >
+                <div className="modal-body p-4" style={{ fontSize: "0.875rem", overflowY: "auto" }}>
                   {/* Feedback Alerts */}
                   {drawerError && (
                     <div
@@ -663,21 +669,24 @@ export const UserManagementScreen: React.FC = () => {
                       <label htmlFor="userInitialPassword" className="form-label fw-semibold text-dark mb-1">
                         Initial Password <span style={{ color: "#DC2626" }}>*</span>
                       </label>
-                      <div className="input-group">
+                      <div className="position-relative">
                         <input
                           id="userInitialPassword"
                           aria-label="Initial Password"
                           type={showPassword ? "text" : "password"}
-                          className="form-control border-end-0"
+                          className="form-control pe-5"
                           value={initialPassword}
                           onChange={(e) => setInitialPassword(e.target.value)}
                           placeholder="Min 8 chars with upper, lower, num & symbol"
                           required
+                          style={{ borderColor: "#D1D5DB" }}
                         />
                         <button
                           type="button"
-                          className="btn btn-outline-secondary border-start-0"
+                          className="btn p-0 position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center text-muted border-0 bg-transparent"
+                          style={{ width: "38px", color: "#52665D" }}
                           onClick={() => setShowPassword((prev) => !prev)}
+                          tabIndex={-1}
                           aria-label={showPassword ? "Hide password" : "Show password"}
                         >
                           <EyeToggleIcon isVisible={showPassword} />
@@ -725,19 +734,23 @@ export const UserManagementScreen: React.FC = () => {
                           >
                             New Initial Password
                           </label>
-                          <div className="input-group mb-2">
+                          <div className="position-relative mb-2">
                             <input
                               id="resetPasswordField"
                               type={showResetPassword ? "text" : "password"}
-                              className="form-control form-control-sm border-end-0"
+                              className="form-control form-control-sm pe-5"
                               value={newResetPassword}
                               onChange={(e) => setNewResetPassword(e.target.value)}
                               placeholder="New temporary password"
+                              style={{ borderColor: "#D1D5DB" }}
                             />
                             <button
                               type="button"
-                              className="btn btn-sm btn-outline-secondary border-start-0"
+                              className="btn p-0 position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center text-muted border-0 bg-transparent"
+                              style={{ width: "34px", color: "#52665D" }}
                               onClick={() => setShowResetPassword((prev) => !prev)}
+                              tabIndex={-1}
+                              aria-label={showResetPassword ? "Hide password" : "Show password"}
                             >
                               <EyeToggleIcon isVisible={showResetPassword} />
                             </button>
@@ -763,7 +776,7 @@ export const UserManagementScreen: React.FC = () => {
                 </div>
 
                 {/* Drawer Footer Actions */}
-                <div className="modal-footer d-flex flex-column gap-2 px-4 pb-4 border-0">
+                <div className="modal-footer d-flex flex-column gap-2 px-4 pb-4 border-0 flex-shrink-0">
                   <button
                     type="submit"
                     className="btn text-white w-100 fw-medium shadow-sm"
@@ -800,6 +813,7 @@ export const UserManagementScreen: React.FC = () => {
                   <button
                     type="button"
                     className="btn btn-link text-muted w-100 p-0 mt-1"
+                    style={{ cursor: "pointer" }}
                     onClick={handleCloseDrawer}
                   >
                     Cancel
