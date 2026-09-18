@@ -228,6 +228,29 @@ export const UserManagementScreen: React.FC = () => {
     }
   };
 
+  // Handle Direct Reactivation from Drawer
+  const handleReactivate = async () => {
+    if (!selectedUser) return;
+    setDrawerError(null);
+    setDrawerSuccess(null);
+    setDrawerSubmitting(true);
+
+    try {
+      const updated = await updateAdminUser(selectedUser.id, {
+        isActive: true,
+      });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === selectedUser.id ? updated : u))
+      );
+      setIsActiveStatus(true);
+      setIsDrawerOpen(false);
+    } catch (err: any) {
+      setDrawerError(err.message || "Failed to reactivate user.");
+    } finally {
+      setDrawerSubmitting(false);
+    }
+  };
+
   // Handle Reset Initial Password in Edit Drawer
   const handleResetPasswordSubmit = async () => {
     if (!selectedUser) return;
@@ -616,52 +639,51 @@ export const UserManagementScreen: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Active Status (Radio Buttons per Section 5.6 Wireframe) */}
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold text-dark mb-1 d-block">
-                      Active Status
-                    </label>
-                    <div className="d-flex align-items-center gap-4 mt-1">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="activeStatusRadio"
-                          id="statusActiveYes"
-                          checked={isActiveStatus === true}
-                          disabled={isEditingOwnAccount || isEditingLastActiveAdmin}
-                          onChange={() => setIsActiveStatus(true)}
-                        />
-                        <label className="form-check-label" htmlFor="statusActiveYes">
-                          Yes
-                        </label>
+                  {/* Account Status Badge (Edit Mode Only - replaces redundant radio buttons) */}
+                  {drawerMode === "edit" && (
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold text-dark mb-1 d-block">
+                        Account Status
+                      </label>
+                      <div className="d-flex align-items-center gap-2 mt-1">
+                        {isActiveStatus ? (
+                          <span
+                            className="badge fw-medium px-2 py-1"
+                            style={{
+                              backgroundColor: "#EAF6EF",
+                              color: "#006B3C",
+                              border: "1px solid #C2E2D3",
+                              fontSize: "0.8rem",
+                            }}
+                          >
+                            Active
+                          </span>
+                        ) : (
+                          <span
+                            className="badge fw-medium px-2 py-1"
+                            style={{
+                              backgroundColor: "#FEE2E2",
+                              color: "#DC2626",
+                              border: "1px solid #FCA5A5",
+                              fontSize: "0.8rem",
+                            }}
+                          >
+                            Inactive
+                          </span>
+                        )}
                       </div>
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="activeStatusRadio"
-                          id="statusActiveNo"
-                          checked={isActiveStatus === false}
-                          disabled={isEditingOwnAccount || isEditingLastActiveAdmin}
-                          onChange={() => setIsActiveStatus(false)}
-                        />
-                        <label className="form-check-label" htmlFor="statusActiveNo">
-                          No
-                        </label>
-                      </div>
+                      {isEditingOwnAccount && (
+                        <div className="form-text small text-danger mt-1">
+                          You cannot deactivate your own account.
+                        </div>
+                      )}
+                      {isEditingLastActiveAdmin && !isEditingOwnAccount && (
+                        <div className="form-text small text-danger mt-1">
+                          System requires at least one active Administrator.
+                        </div>
+                      )}
                     </div>
-                    {isEditingOwnAccount && (
-                      <div className="form-text small text-danger">
-                        You cannot deactivate your own account.
-                      </div>
-                    )}
-                    {isEditingLastActiveAdmin && !isEditingOwnAccount && (
-                      <div className="form-text small text-danger">
-                        System requires at least one active Administrator.
-                      </div>
-                    )}
-                  </div>
+                  )}
 
                   {/* Initial Password (Create Mode Only) */}
                   {drawerMode === "create" && (
@@ -786,7 +808,7 @@ export const UserManagementScreen: React.FC = () => {
                     {drawerSubmitting ? "Saving..." : "Save User"}
                   </button>
 
-                  {drawerMode === "edit" && (
+                  {drawerMode === "edit" && isActiveStatus && (
                     <span
                       className="w-100 d-inline-block"
                       title={deactivateTooltip}
@@ -808,6 +830,24 @@ export const UserManagementScreen: React.FC = () => {
                         Deactivate User
                       </button>
                     </span>
+                  )}
+
+                  {drawerMode === "edit" && !isActiveStatus && (
+                    <button
+                      type="button"
+                      className="btn w-100 fw-medium"
+                      style={{
+                        height: "40px",
+                        borderColor: "#006B3C",
+                        color: "#006B3C",
+                        backgroundColor: "#FFFFFF",
+                        cursor: "pointer",
+                      }}
+                      disabled={drawerSubmitting}
+                      onClick={handleReactivate}
+                    >
+                      Reactivate User
+                    </button>
                   )}
 
                   <button

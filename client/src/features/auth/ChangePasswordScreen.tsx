@@ -334,6 +334,20 @@ export const ChangePasswordScreen: React.FC<ChangePasswordProps> = ({ onSuccess 
               <span>Continue</span>
             )}
           </button>
+
+          {/* Cancel & Sign Out Option */}
+          <div className="text-center mt-3">
+            <button
+              type="button"
+              className="btn btn-link text-muted p-0 text-decoration-none"
+              style={{ fontSize: "0.875rem", cursor: "pointer" }}
+              onClick={async () => {
+                await auth.logout();
+              }}
+            >
+              Sign Out / Cancel
+            </button>
+          </div>
         </form>
       </div>
     </div>
