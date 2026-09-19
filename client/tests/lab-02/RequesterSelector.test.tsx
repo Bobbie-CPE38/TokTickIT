@@ -3,42 +3,43 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import App from "../../src/App.js";
 import * as api from "../../src/api.js";
 
-const mockActiveRequesters: api.DevelopmentRequester[] = [
-  {
-    id: 1,
-    name: "Jennifer Anderson",
-    email: "jennifer.anderson@kmutt.ac.th",
-    department: "Computer Engineering",
-  },
-  {
-    id: 2,
-    name: "David Lee",
-    email: "david.lee@kmutt.ac.th",
-    department: "Information Technology",
-  },
-  {
-    id: 3,
-    name: "Sarah Johnson",
-    email: "sarah.johnson@kmutt.ac.th",
-    department: "Digital Media",
-  },
-  {
-    id: 4,
-    name: "Michael Brown",
-    email: "michael.brown@kmutt.ac.th",
-    department: "Electrical Engineering",
-  },
-];
+const mockRequesterTickets: api.TicketListResponse = {
+  data: [
+    {
+      id: 101,
+      ticketNumber: "TKT-2026-000101",
+      summary: "Laptop battery drains quickly",
+      requestedPriority: "MEDIUM",
+      itPriority: "MEDIUM",
+      currentStatus: "NEW",
+      ticketOwner: null,
+      categoryId: 2,
+      categoryName: "Hardware",
+      relatedSystemId: 2,
+      relatedSystemName: "Corporate Laptop",
+      attachmentCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ],
+  pagination: { total: 1, page: 1, pageSize: 10, totalPages: 1 },
+};
 
-describe("UI-04: Development Requester Context and Selector", () => {
+describe("Removal of Development Requester Selector and Legacy Requester Selection Flow", () => {
   beforeEach(() => {
+    window.history.pushState({}, "", "/");
     localStorage.clear();
     vi.restoreAllMocks();
     vi.spyOn(api, "fetchCategories").mockResolvedValue([]);
     vi.spyOn(api, "fetchRelatedSystems").mockResolvedValue([]);
-    vi.spyOn(api, "fetchTickets").mockResolvedValue({
-      data: [],
-      pagination: { total: 0, page: 1, pageSize: 10, totalPages: 0 },
+    vi.spyOn(api, "fetchTickets").mockResolvedValue(mockRequesterTickets);
+    vi.spyOn(api, "fetchCurrentUser").mockResolvedValue({
+      id: 1,
+      name: "Jennifer Anderson",
+      email: "jennifer.anderson@kmutt.ac.th",
+      role: "REQUESTER",
+      isActive: true,
+      mustChangePassword: false,
     });
   });
 
@@ -47,226 +48,131 @@ describe("UI-04: Development Requester Context and Selector", () => {
     vi.restoreAllMocks();
   });
 
-  it("prompts with Development Requester selection modal when no requester is selected (AC-02, BR-03)", async () => {
-    vi.spyOn(api, "fetchActiveRequesters").mockResolvedValue(mockActiveRequesters);
-
+  /**
+   * 1. The Development Requester selector is no longer present in the UI
+   */
+  it("confirms Development Requester selection modal and text are removed when unauthenticated", async () => {
     render(<App />);
 
-    // Check title and notice banner text per ui-spec.md Section 5.1
-    expect(await screen.findByText(/Select Development Requester/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /Select a Development Requester to test requester-specific ticket behavior. This is not a login screen. Authentication and role-based access will be introduced in Lab 3./i
-      )
-    ).toBeInTheDocument();
+    // Unauthenticated user should see Login screen
+    expect(await screen.findByText(/Sign in to your account/i)).toBeInTheDocument();
 
-    // Check dropdown options format: {Name} ({Department}) - {Email}
-    const select = (await screen.findByRole("combobox", {
-      name: /Select Requester/i,
-    })) as HTMLSelectElement;
-    expect(select).toBeInTheDocument();
-
-    // Helper text
-    expect(screen.getByText(/Only active development requesters are shown./i)).toBeInTheDocument();
-
-    // Ensure options are populated with the active requesters
-    await waitFor(() => {
-      expect(screen.getByRole("option", { name: "Jennifer Anderson" })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "David Lee" })).toBeInTheDocument();
-    });
-
-    // Inactive requester (Alex Inactive) must NOT be present (AC-05, BR-05)
-    expect(screen.queryByText(/Alex Inactive/i)).not.toBeInTheDocument();
-  });
-
-  it("selects a requester, persists to storage, and displays profile in header", async () => {
-    vi.spyOn(api, "fetchActiveRequesters").mockResolvedValue(mockActiveRequesters);
-
-    render(<App />);
-
-    const select = (await screen.findByRole("combobox", {
-      name: /Select Requester/i,
-    })) as HTMLSelectElement;
-
-    // Select Jennifer Anderson (id: 1)
-    fireEvent.change(select, { target: { value: "1" } });
-
-    const continueBtn = screen.getByRole("button", { name: /Continue/i });
-    fireEvent.click(continueBtn);
-
-    // Modal should close and header should display selected requester name and department
-    await waitFor(() => {
-      expect(screen.queryByText(/Select a Development Requester to test/i)).not.toBeInTheDocument();
-    });
-
-    expect(screen.getAllByText(/Jennifer Anderson/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Computer Engineering/i).length).toBeGreaterThanOrEqual(1);
-
-    // Verify localStorage has persisted requester ID
-    expect(localStorage.getItem("toktickit_requester_id")).toBe("1");
-  });
-
-  it("allows switching requester via the Change / Switch Requester action in header (BR-16)", async () => {
-    // Pre-populate localStorage with David Lee (id: 2)
-    localStorage.setItem("toktickit_requester_id", "2");
-    vi.spyOn(api, "fetchActiveRequesters").mockResolvedValue(mockActiveRequesters);
-
-    render(<App />);
-
-    // Should load with David Lee active and no prompt open initially
-    await waitFor(() => {
-      expect(screen.getAllByText(/David Lee/i).length).toBeGreaterThanOrEqual(1);
-    });
-    expect(screen.getAllByText(/Information Technology/i).length).toBeGreaterThanOrEqual(1);
+    // Legacy selector modal and its text must NOT exist anywhere in the DOM
+    expect(screen.queryByText(/Select Development Requester/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Select a Development Requester to test/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Only active development requesters are shown/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /Select Requester/i })).not.toBeInTheDocument();
+  });
 
-    // Click Profile button in header to open dropdown menu, then click Switch Requester
+  /**
+   * 2. The Change Requester action is no longer present in the header/profile dropdown
+   */
+  it("confirms Change / Switch Requester action is no longer present in header or profile menu", async () => {
+    localStorage.setItem("toktickit_auth_token", "mock-jwt-token");
+    localStorage.setItem(
+      "toktickit_auth_user",
+      JSON.stringify({
+        id: 1,
+        name: "Jennifer Anderson",
+        email: "jennifer.anderson@kmutt.ac.th",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+      })
+    );
+    vi.spyOn(api, "fetchCurrentUser").mockResolvedValue({
+      id: 1,
+      name: "Jennifer Anderson",
+      email: "jennifer.anderson@kmutt.ac.th",
+      role: "REQUESTER",
+      isActive: true,
+      mustChangePassword: false,
+    });
+
+    render(<App />);
+
+    // Wait for authenticated header to render
+    expect(await screen.findByRole("button", { name: /Profile/i })).toBeInTheDocument();
+
+    // Click profile dropdown
     const profileBtn = screen.getByRole("button", { name: /Profile/i });
     fireEvent.click(profileBtn);
 
-    const switchBtn = screen.getByRole("button", { name: /Switch Requester|Change Requester/i });
-    fireEvent.click(switchBtn);
+    // Assert that Switch / Change Requester action is NOT present
+    expect(
+      screen.queryByRole("button", { name: /Switch Requester|Change Requester/i })
+    ).not.toBeInTheDocument();
 
-    // Modal should open
-    expect(screen.getByText(/Select Development Requester/i)).toBeInTheDocument();
-
-    // Cancel button should be enabled when a requester is already active
-    const cancelBtn = screen.getByRole("button", { name: /Cancel/i });
-    expect(cancelBtn).not.toBeDisabled();
-
-    // Switch to Sarah Johnson (id: 3)
-    const select = screen.getByRole("combobox", { name: /Select Requester/i }) as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "3" } });
-
-    const continueBtn = screen.getByRole("button", { name: /Continue/i });
-    fireEvent.click(continueBtn);
-
-    // Should now show Sarah Johnson in header
-    await waitFor(() => {
-      expect(screen.getAllByText(/Sarah Johnson/i).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText(/Digital Media/i).length).toBeGreaterThanOrEqual(1);
-    });
-    expect(localStorage.getItem("toktickit_requester_id")).toBe("3");
+    // Only user info and Sign Out must be present
+    expect(screen.getAllByText(/Jennifer Anderson/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/jennifer.anderson@kmutt.ac.th/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Sign Out/i })).toBeInTheDocument();
   });
 
-  it("displays error alert and allows retry when loading requesters fails", async () => {
-    const fetchSpy = vi
-      .spyOn(api, "fetchActiveRequesters")
-      .mockRejectedValueOnce(new Error("Unable to load requesters"))
-      .mockResolvedValueOnce(mockActiveRequesters);
-
-    render(<App />);
-
-    expect(await screen.findByText(/Unable to load requesters/i)).toBeInTheDocument();
-
-    // Click Retry
-    const retryBtn = screen.getByRole("button", { name: /Retry/i });
-    fireEvent.click(retryBtn);
-
-    // Should reload and succeed
-    await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
-      expect(screen.getByRole("option", { name: "Jennifer Anderson" })).toBeInTheDocument();
-    });
-  });
-
-  it("redirects to My Tickets when switching requester while viewing ticket detail", async () => {
+  /**
+   * 3. The underlying requester-selection mechanism cannot still be used to authenticate or access tickets
+   */
+  it("prevents bypassing authentication by injecting legacy toktickit_requester_id into localStorage", async () => {
+    // Inject legacy requester keys into localStorage without a valid Lab 3 token
     localStorage.setItem("toktickit_requester_id", "1");
-    localStorage.setItem("toktickit_requester_data", JSON.stringify(mockActiveRequesters[0]));
-    vi.spyOn(api, "fetchActiveRequesters").mockResolvedValue(mockActiveRequesters);
-    vi.spyOn(api, "fetchCategories").mockResolvedValue([{ id: 2, name: "Hardware" }]);
-
-    const mockTicketDetail: api.TicketDetail = {
-      id: 101,
-      ticketNumber: "TKT-2026-000101",
-      summary: "Laptop battery drains quickly",
-      description: "My laptop battery is draining faster than usual.",
-      requestedPriority: "MEDIUM",
-      itPriority: "MEDIUM",
-      currentStatus: "NEW",
-      ticketOwner: null,
-      resolutionSummary: null,
-      requesterId: 1,
-      requester: {
+    localStorage.setItem(
+      "toktickit_requester_data",
+      JSON.stringify({
         id: 1,
         name: "Jennifer Anderson",
         email: "jennifer.anderson@kmutt.ac.th",
         department: "Computer Engineering",
-      },
-      categoryId: 2,
-      category: { id: 2, name: "Hardware" },
-      relatedSystemId: 2,
-      relatedSystem: { id: 2, name: "Corporate Laptop" },
-      attachments: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      })
+    );
 
-    vi.spyOn(api, "fetchTicketDetail").mockResolvedValue(mockTicketDetail);
-    vi.spyOn(api, "fetchTickets").mockImplementation(async (_params, requesterId) => {
-      if (requesterId === 1) {
-        return {
-          data: [
-            {
-              id: 101,
-              ticketNumber: "TKT-2026-000101",
-              summary: "Laptop battery drains quickly",
-              categoryId: 2,
-              categoryName: "Hardware",
-              relatedSystemId: 2,
-              relatedSystemName: "Corporate Laptop",
-              attachmentCount: 0,
-              requestedPriority: "MEDIUM",
-              itPriority: "MEDIUM",
-              currentStatus: "NEW",
-              ticketOwner: null,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-          ],
-          pagination: { total: 1, page: 1, pageSize: 10, totalPages: 1 },
-        };
-      }
-      return {
-        data: [],
-        pagination: { total: 0, page: 1, pageSize: 10, totalPages: 0 },
-      };
+    const fetchTicketsSpy = vi.spyOn(api, "fetchTickets");
+
+    render(<App />);
+
+    // Must still redirect to Login screen
+    expect(await screen.findByText(/Sign in to your account/i)).toBeInTheDocument();
+
+    // Tickets must NOT be fetched or displayed
+    expect(fetchTicketsSpy).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Laptop battery drains quickly/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/TKT-2026-000101/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * 4. The normal Lab 3 authentication flow remains functional
+   */
+  it("authenticates normally via Lab 3 login and provides access to tickets", async () => {
+    const loginSpy = vi.spyOn(api, "login").mockResolvedValue({
+      token: "valid-jwt-token",
+      user: {
+        id: 1,
+        name: "Jennifer Anderson",
+        email: "jennifer.anderson@kmutt.ac.th",
+        role: "REQUESTER",
+        isActive: true,
+        mustChangePassword: false,
+      },
     });
 
     render(<App />);
 
-    // Wait for active requester to load
+    // Fill login form
+    const emailInput = await screen.findByLabelText(/Email address/i);
+    const passwordInput = screen.getByLabelText(/^Password/i);
+    const submitBtn = screen.getByRole("button", { name: /Sign In/i });
+
+    fireEvent.change(emailInput, { target: { value: "jennifer.anderson@kmutt.ac.th" } });
+    fireEvent.change(passwordInput, { target: { value: "Password123!" } });
+    fireEvent.click(submitBtn);
+
     await waitFor(() => {
-      expect(screen.getAllByText(/Jennifer Anderson/i).length).toBeGreaterThanOrEqual(1);
+      expect(loginSpy).toHaveBeenCalledWith("jennifer.anderson@kmutt.ac.th", "Password123!");
     });
 
-    // Wait for My Tickets to load and click on ticket
-    const ticketBadges = await screen.findAllByText(/TKT-2026-000101/i);
-    expect(ticketBadges.length).toBeGreaterThanOrEqual(1);
-    const ticketRow = (await screen.findAllByText(/Laptop battery drains quickly/i))[0];
-    fireEvent.click(ticketRow);
-
-    // Should be in Ticket Details view
-    expect(await screen.findByText(/Ticket Details/i)).toBeInTheDocument();
-
-    // Now switch requester via header
-    const profileBtn = screen.getByRole("button", { name: /Profile/i });
-    fireEvent.click(profileBtn);
-
-    const switchBtn = screen.getByRole("button", { name: /Switch Requester|Change Requester/i });
-    fireEvent.click(switchBtn);
-
-    // Modal opens, select David Lee (id: 2)
-    const select = (await screen.findByRole("combobox", { name: /Select Requester/i })) as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "2" } });
-
-    const continueBtn = screen.getByRole("button", { name: /Continue/i });
-    fireEvent.click(continueBtn);
-
-    // Modal closes and user is redirected to My Tickets (not showing error on /tickets/101)
-    await waitFor(() => {
-      expect(screen.getByText(/View and track all of your support requests/i)).toBeInTheDocument();
-      expect(screen.queryByText(/Ticket Details/i)).not.toBeInTheDocument();
-    });
+    // Successfully transitioned into My Tickets view
+    expect(
+      (await screen.findAllByText(/Laptop battery drains quickly/i)).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Jennifer Anderson/i).length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -5,7 +5,17 @@ import * as api from "../../src/api.js";
 
 describe("App", () => {
   beforeEach(() => {
-    localStorage.setItem("toktickit_requester_id", "1");
+    localStorage.setItem("toktickit_auth_token", "mock-jwt-token");
+    localStorage.setItem(
+      "toktickit_auth_user",
+      JSON.stringify({
+        id: 1,
+        name: "Jennifer Anderson",
+        email: "jennifer.anderson@kmutt.ac.th",
+        role: "REQUESTER",
+        mustChangePassword: false,
+      })
+    );
     vi.spyOn(api, "fetchActiveRequesters").mockResolvedValue([
       {
         id: 1,

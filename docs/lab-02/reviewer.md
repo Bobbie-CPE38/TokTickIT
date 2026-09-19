@@ -1,4 +1,4 @@
-# Lab 2 — Peer Review Record  (fill this in)
+# Lab 3 — Peer Review Record  (fill this in)
 
 **Author:** Methipat Mansap — 67070501071 — GitHub: @Bobbie-CPE38
 
@@ -7,395 +7,334 @@
 ## Pull Requests I authored (reviewed by my partner)
 | PR | Branch | Reviewer verdict |
 |----|--------|------------------|
-| #11 | docs/lab2-specs -> lab2-staging | Approved |
-| #17 | feature/lab2-requester-context -> lab2-staging | Approved |
-| #18 | feature/lab2-ticket-creation -> lab2-staging | Approved |
-| #19 | feature/lab2-my-tickets -> lab2-staging | Approved |
-| #20 | feature/lab2-ticket-detail-attachments -> lab2-staging | Approved |
-| #21 | feature/lab2-e2e-and-visuals -> lab2-staging | Approved |
+| #26 | docs/lab3-specs -> lab3-staging | Approved |
+| #33 | feature/lab3-auth-foundation -> lab3-staging | Approved |
+| #35 | feature/lab3-arch-reconstruction -> lab3-staging | Approved |
+| #36 | feature/lab3-requester-continuity -> lab3-staging | Approved |
+| #37 | feature/lab3-staff-queue -> lab3-staging | Approved |
+| #38 | feature/lab3-staff-ticket-detail -> lab3-staging | Approved |
+| #39 | feature/lab3-admin-user-management -> lab3-staging | Approved |
 
-### PR #11: `docs: Lab2 specifications and test plans (#10)`
-- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/11
+### PR #26: `docs(lab3-specs): complete Sprint 3 engineering specifications and test plans (#25)`
+- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/26
 - **Reviewer comment I received:**
-  Merge docs/lab2-specs to lab2-staging branch
   ```
-  1. specification.md 
-  - [x] มีครบ 11 หัวข้อที่บังคับ และระบุได้ชัดเจนตรงตามโจทย์
-  - [x] กำหนด Business Rules และ Acceptance Criteria แบบ Given-When-Then ครอบคลุม
-  - [x] ออกแบบ Prisma Schema, ความสัมพันธ์ และ Seed data  ได้ถูกต้อง
-  2. tests.md
-  - [x] ตาราง Planned Tests มีครบทุกระดับตามที่บังคับ (API, UI, E2E)
-  - [x] มีการจับคู่ Acceptance Criteria เข้ากับ Test Cases อย่างชัดเจน
-  3. ui-spec.md
-  - [x] ระบุ Design Tokens และ Component Rules  ตรงตามมาตรฐานของ Lab
-  - [x] ระบุ Responsive Layout ชัดเจน
-  4. api-spec.md
-  - [x] ออกแบบได้ครบ โดยเฉพาะระบบ My Tickets ที่รองรับ Search, Filter, Sort และ Pagination ตามบังคับ
-  - [x] ระบุการจำลอง User ผ่าน X-Requester-Id และใช้ HTTP Status Codes ได้เหมาะสม
-
-  ทุกอย่างครบถ้วน สามารถ Merge ได้เลย
+  - [x] โครงสร้างเอกสาร specification.md ครบถ้วนทั้ง 11 Sections ตามข้อกำหนดของ Lab 3
+  - [x] เอกสาร ui-spec.md ออกแบบครอบคลุมทั้ง 6 หน้าจอหลัก พร้อม Zen Green Tokens และตาราง Visual Checklist
+  - [x] เอกสาร api-spec.md กำหนด Role-Based Authorization Matrix, CSRF Justification และโครงสร้าง Error Response ชัดเจน
+  - [x] แผนการทดสอบใน tests.md ครอบคลุมทั้ง API, UI, E2E พร้อมตาราง Traceability Matrix ครบ 100%
+  - [x] Admin Safety Guards ป้องกันการปิดบัญชีตัวเองหรือ Admin คนสุดท้ายได้อย่างถูกต้อง
+  - [ ] ความเสี่ยงด้าน Regression Tests กับข้อมูลเดิม: การวางแผนเปลี่ยนโดเมนอีเมลเป็น @toktickit.com ใน spec ขัดแย้งกับชุดทดสอบเดิมของ Lab 2 (server/tests/lab-02/) ที่ฮาร์ดโค้ดค้นหาผู้ใช้ด้วย @kmutt.ac.th (เช่น jennifer.anderson@kmutt.ac.th) ซึ่งจะทำให้เทสต์เดิมทั้ง 43 ข้อหาข้อมูลไม่เจอและรันไม่ผ่านทันที ควรระบุการคงอีเมลเดิมไว้สำหรับข้อมูลชุดเดิม
+  - [ ] ผลกระทบจากการย้าย Role ผู้ใช้เดิม: การปรับ Michael Brown และ David Lee ให้เป็น IT_STAFF ส่งผลให้ Michael Brown ไม่สามารถเข้าถึงตั๋วเดิม 25 ใบในหน้า My Tickets (ถูกบล็อก 403) และทำให้เทสต์เดิมของ Lab 2 ที่ใช้ David Lee ตรวจสอบสิทธิ์การเข้าถึงทำงานเพี้ยน ควรคงผู้ใช้เดิมทั้งหมดจาก Lab 2 เป็น REQUESTER แล้วเพิ่ม Seed บัญชีใหม่สำหรับ IT Staff แยกต่างหาก
+  - [ ] ความไม่สอดคล้องกันระหว่าง UI และ API ในกระบวนการปิดตั๋ว (CLOSED): ใน spec และ api-spec กำหนดให้สถานะ CLOSED ต้องส่ง resolutionSummary (อย่างน้อย 5 ตัวอักษร) แต่ใน ui-spec Modal การปิดตั๋วเป็นเพียงการกดยืนยันโดยไม่มีช่องกรอก ทำให้เมื่อส่งคำขอจริงจะติด Error 422 ควรระบุให้ชัดเจนว่าจะดึงข้อมูลเดิมจากตอน RESOLVED มาใช้ หรือต้องเพิ่มช่องกรอกในหน้า UI Modal
+  - [ ] ขอบเขตสิทธิ์การจัดการไฟล์แนบของ IT Staff: ใน api-spec กำหนดให้การอัปโหลดไฟล์แนบทำได้เฉพาะ owned ticket only ส่งผลให้ IT Staff ไม่สามารถแนบไฟล์ภาพหรือ Log ลงในตั๋วของ Requester ขณะปฏิบัติงานได้ ควรปรับสิทธิ์ให้ IT Staff สามารถแนบไฟล์ลงในตั๋วที่กำลังดูแลได้ด้วย หรือบันทึกเหตุผลการออกแบบไว้ให้ชัดเจน
+  - [ ] ข้อจำกัดของวงจรสถานะตั๋วหลังการปิดงาน: การกำหนดให้สถานะ CLOSED เป็น Terminal อย่างเด็ดขาดโดยไม่สามารถ Reopen ได้อีก อาจไม่สอดคล้องกับพฤติกรรมการใช้งานจริงหากปัญหาเดิมเกิดซ้ำหลังจากปิดงานไปแล้ว ควรพิจารณาเปิดให้สามารถ Reopen ตั๋วที่ปิดไปแล้วได้เพื่อความยืดหยุ่น
+  - [ ] แผนการย้ายข้อมูล Enum ในฐานข้อมูล: การเปลี่ยนชื่อ Enum จาก PENDING เป็น WAITING_FOR_REQUESTER บน PostgreSQL มีความเสี่ยงต่อข้อมูลเดิมของ Lab 2 หากไม่มีคำสั่ง Custom SQL Migration (ALTER TYPE ... RENAME VALUE) รองรับ ควรระบุขั้นตอนจัดการข้อมูลส่วนนี้ใน Migration Strategy ให้ชัดเจน
   ```
 - **How I responded:**
   ```
-  Thanks for your wonderful effort in checking my work.
+  Thanks for your thorough review! I have addressed all feedback:
+  - Preserved all original Lab 2 users under @kmutt.ac.th with role REQUESTER to guarantee zero regression across the 43 existing tests, while adding new operational accounts under @toktickit.com for IT Staff and Administrator.
+  - Implemented Option B for attachments, permitting IT Staff and Administrators to upload attachments to any ticket.
+  - Updated ticket lifecycle rules to permit reopening closed tickets if issues persist.
+  - Detailed the PostgreSQL migration strategy using custom SQL (ALTER TYPE ... RENAME VALUE) for PENDING -> WAITING_FOR_REQUESTER.
   ```
+- **Partner's response**: Merge docs/lab3-specs to lab3-staging branch
 
-### PR #17: `feat(requester): implement Development Requester model, seed, and selector (#12)`
-- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/17
+### PR #33: `feat(auth): implement User data model, JWT authentication, and mandatory password change (#27)`
+- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/33
 - **Reviewer comment I received:**
-  Merge feature/lab2-requester-context to lab2-staging branch
+  Merge feature/lab3-auth-foundation to lab3-staging branch
   ```
-  - [x]  รันคำสั่ง npm test ทั้งใน server และ client แล้วไม่แสดง error ใด ๆ
-  - [x] ทดสอบรันคำสั่ง npm run prisma:seed ซ้ำหลาย ๆ ครั้ง ระบบทำงานสำเร็จ ข้อมูลไม่ซ้ำ และไม่แสดง Error ใด ๆ
-  - [x] ใน Database GUI มีตาราง development_requesters ถูกสร้างขึ้นจริง และมีข้อมูล Seed ครบ 5 คน (Active 4, Inactive 1)
-  - [x] ข้อมูลจาก API เส้น /api/requesters/active คืนค่ามาเฉพาะคนที่สถานะ isActive: true เท่านั้น และเรียงลำดับตาม ID ถูกต้อง
-  - [x] เปิดหน้าเว็บครั้งแรก ระบบบังคับเลือก Requester โดยปุ่ม Cancel ถูกปิดไม่ให้ใช้งาน
-  - [x] เมื่อเลือกชื่อแล้ว ระบบแสดงชื่อที่มุมขวาบนถูกต้อง ทดลองกด F5 ข้อมูลก็ยังไม่หายไป จำค่าลง Local Storage ได้จริง
-  - [x] ทดลองกด Switch Requester มีหน้าต่างเด้งขึ้นมาให้เปลี่ยนชื่อได้ และในรอบนี้ปุ่ม Cancel สามารถกดใช้งานได้ปกติ
-  - [x] การแสดงผล UI ครบถ้วน: เห็น Loading spinner, Error state แจ้งเตือนตอนลองปิด server และเห็น Empty state เมื่อลบข้อมูลทิ้งหมด
+  - [x] Standard login flow works smoothly across all user roles
+  - [x] Can't login to inactive accounts (proper inactive notice returned)
+  - [x] First login forces password change and blocks unauthorized navigation
+  - [x] Password complexity rules validated properly on UI
+  - [x] Logging out terminates session and protects guarded routes
   ```
 - **How I responded:**
   ```
-  Thanks for your effort reviewing my work.
+  Thanks for reviewing!
   ```
 
-### PR #18: `feat(tickets): implement POST /api/tickets API and Create Ticket UI with Zen Green validation (#13)`
-- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/18
+### PR #35: `refactor(arch): reconstruct full-stack architecture for separation of concerns, maintainability, and feature scalability (#34)`
+- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/35
 - **Reviewer comment I received:**
-  Merge feature/lab2-ticket-creation to lab2-staging branch
+  Merge feature/lab3-arch-reconstruction to lab3-staging branch
   ```
-  - [x] รันคำสั่ง npm test ในฝั่ง server และ client ไม่แสดง error ใด ๆ
-  - [x] ถ้ายังไม่เลือก User ระบบจะบังคับให้เลือกก่อน ไม่ยอมให้เข้าหน้าสร้างตั๋ว
-  - [x] API ตรวจสอบ Validation ถูกต้อง และสร้างรหัส Ticket (`TKT-YYYY-NNNN`) กับสถานะ NEW ให้อัตโนมัติได้จริง
-  - [x] หน้า Create Ticket แสดงชื่อผู้ใช้และวันที่แบบอ่านได้อย่างเดียว (Read-only)
-  - [x] ข้อมูลใน Dropdown ของ Category และ Related System ดึงมาจากฐานข้อมูล (API) จริง
-  - [x] มีตัวเลขนับอักษรแบบ Real-time ใต้ช่อง Summary และ Description 
-  - [x] การทำงานของฟอร์มถูกต้อง: ดักข้อความ Error ใต้ช่องกรอกได้, ล็อคปุ่มตอนโหลด และโชว์เลขตั๋วเมื่อสร้างเสร็จ 
-  - [x] ทดสอบจำลอง Server ล่มระหว่างกดส่ง ระบบฟ้อง Error โดยที่ข้อมูลในฟอร์มไม่หายไป
+  - [x] Feature slices modularized into server/src/features/ and client/src/features/
+  - [x] Minimal entry facades preserved (app.ts < 100 lines, App.tsx < 80 lines)
+  - [x] Core never imports from features (inward dependency flow)
+  - [x] Backward-compatibility re-export shims work properly
+  - [x] All existing automated tests continue to pass 100%
   ```
 - **How I responded:**
   ```
-  Thanks for your effort as always.
+  Thanks! Ready to merge.
   ```
 
-### PR #19: `feat(tickets): implement GET /api/tickets endpoint and My Tickets UI with search, filter, and pagination (#14)`
-- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/19
+### PR #36: `feat(requester): adapt ticket workflows to authenticated session, add public comments, and resolution indication (#28)`
+- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/36
 - **Reviewer comment I received:**
-  Merge feature/lab2-my-tickets to lab2-staging branch
+  Merge feature/lab3-requester-continuity to lab3-staging branch
   ```
-  - [x]  รันคำสั่ง npm test ในฝั่ง server และ client ไม่แสดง error ใด ๆ
-  - [x] API GET /api/tickets ทำงานถูกต้อง รองรับการดึงข้อมูลพร้อมทำ Filter, Search และ Pagination ในตัว
-  - [x] ข้อมูล Seed มีตั๋วจำลองมาให้ ทำให้สามารถทดสอบปุ่มเปลี่ยนหน้าของระบบ Pagination ได้ทันที
-  - [x] หน้า UI แสดงสถานะครบถ้วน
-  - [x] ทดสอบสลับ Requester: ลองกดปุ่มเปลี่ยนชื่อ Requester ข้อมูลตั๋วบนหน้าจอจะถูกเคลียร์และดึงมาเฉพาะของคนที่เลือกใหม่ทันที
-  - [x] ทดสอบ Pagination: ล็อกอินด้วยชื่อ Jennifer หน้าแรกโชว์ "Showing 1 to 10 of 18 tickets" เมื่อกดปุ่ม Next > เว็บเปลี่ยนไปโชว์ตั๋วใบที่ 11-18 ได้ถูกต้อง
-  - [x] ทดสอบ Search & Filter: ระบบ Search และกรองข้อมูล (Filter) ทำงานอัปเดตแบบ Real-time และมีปุ่ม Clear Filters ที่ใช้งานได้จริง
-  - [x] ทดสอบ Sorting: สามารถคลิกที่หัวตารางเพื่อ Sorting ข้อมูลได้ถูกต้อง
-  - [x] ทดสอบ Mobile View:หน้าเว็บ My Tickets แสดงผลตารางได้เรียบร้อย และปรับหน้าจอเป็นรูป Card ให้อัตโนมัติเมื่อดูผ่านมือถือ
+  - [x] Requester session context replaces legacy development selector
+  - [x] Public comments post and display cleanly with author badge and timestamp
+  - [x] Internal Notes tab is completely hidden from requesters
+  - [x] "Problem Appears Resolved" banner displays when ticket is marked Resolved
+  - [x] Anti-leakage isolation verified: cross-requester access returns 404
+  - [x] Spacing between loading spinner and Posting label is aligned
   ```
 - **How I responded:**
   ```
-  Must've spend you a while.
-  Thanks for your effort as always!!!
+  Thanks for your effort as always!
   ```
 
-### PR #20: `feat(ticket-detail & attachments): Ticket Detail view and Attachment upload/download/soft-removal (#15)`
-- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/20
+### PR #37: `feat(staff-queue): implement shared IT Staff Ticket Queue with search, filters, sorting, and pagination (#29)`
+- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/37
+- **Reviewer comment I received:**
+  Merge feature/lab3-staff-queue to lab3-staging branch
+  ```
+  - [x] 8-column queue table matches spec exactly
+  - [x] Status filter and debounced search work dynamically
+  - [x] Column header sorting toggles work for ticket number, date, priority, status
+  - [x] Pagination controls and item counts work properly
+  - [x] Responsive layout collapses into cards on mobile
+  - [x] Requesters are blocked from accessing /queue
+  ```
+- **How I responded:**
+  ```
+  Thanks for the review!
+  ```
+
+### PR #38: `feat(staff-detail): implement IT Staff Ticket Detail, ownership assignment, IT Priority, status progression, attachments, and Internal Notes (#30)`
+- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/38
 - **Reviewer comment I received (Initial review):**
   ```
-  - [x] รันคำสั่ง npm test ในฝั่ง server และ client ไม่แสดง error ใด ๆ
-  - [x] หน้า Ticket Details แสดงข้อมูลครบถ้วน และช่องฟิลด์เป็นแบบ Read-only ห้ามแก้ไข
-  - [x] ระบบอัปโหลดทำงานได้จริง รองรับการลากไฟล์มาวาง (Drag & Drop) และจำกัดอัปโหลดได้สูงสุด 5 ไฟล์
-  - [x] ระบบดาวน์โหลดไฟล์ (Download Active Attachment) ทำงานได้ถูกต้อง โหลดไฟล์ออกมาได้ซึ่งมีคุณสมบัติที่เหมือนกับไฟล์ต้นฉบับ
-  - [x] ระบบลบไฟล์ (Soft Removal) ทำงานถูกต้อง มี Modal ถามเหตุผล (บังคับพิมพ์ 3 ตัวอักษรขึ้นไป) และไฟล์ถูกย้ายไปที่ตาราง Removed History พร้อมขีดฆ่าชื่อไฟล์
-  - [x] ทดสอบใช้คำสั่ง curl เพื่อโหลดไฟล์ที่ถูกลบทิ้งไปแล้ว แต่ระบบป้องกันได้สมบูรณ์ (ตอบกลับ HTTP 410 Gone)
-  - [x] ระบบ Create Ticket Attachment Staging ทำงานถูกต้อง สามารถแนบไฟล์ 1-2 ไฟล์รอไว้ที่กล่อง (Dropzone) ตอนกำลังสร้างตั๋วได้ โดยแสดงป้ายชื่อไฟล์บอกขนาดพร้อมปุ่มลบ [x] และเมื่อกด Submit สร้างตั๋ว ไฟล์จะถูกอัปโหลดไปผูกกับตั๋วใบใหม่สำเร็จ
-  - [ ] ระบบ Security แน่นหนา ลองสลับ User ไปเป็นคนอื่น ระบบบล็อกการแอบดูตั๋ว (URL /tickets/1) ได้อย่างถูกต้อง แต่เพื่อประสบการณ์ใช้งานที่ดีขึ้น เมื่อผู้ใช้อยู่ในหน้า Ticket Details แล้วกด Switch Requester ระบบควรจะ Redirect ผู้ใช้กลับไปที่หน้าหน้าแรก (My Tickets) อัตโนมัติ แทนที่จะปล่อยให้ค้างอยู่หน้าเดิมแล้วแสดงจอ Error แจ้งเตือน
+  ตำแหน่งแสดงผล Error ข้อความไม่พอยังไม่เป็นรูปแบบเดียวกัน:
+  ตอนเปลี่ยนสถานะทั่วไป เช่น กด Resolve ถ้าพิมพ์ไม่ถึง 5 ตัวอักษร ข้อความแจ้งเตือนจะแสดงอยู่ ด้านล่างใต้กล่องข้อความภายใน Modal (Resolution summary is required and must be at least 5 characters.) ซึ่งดูเรียบร้อยดี
+  แต่ตอนเปลี่ยนสถานะจาก RESOLVED ไปเป็น CLOSED หรือ REOPENED ถ้าข้อความผิดเงื่อนไข ข้อความแจ้งเตือนกลับเด้งไปแสดงเป็นแถบสีแดงอยู่ ด้านบนข้างนอก Modal บนหน้าจอหลัก (resolutionSummary must be between 5 and 1000 characters.)
+  คำแนะนำ: หากต้องการให้ UX มีความสม่ำเสมอ แนะนำให้ปรับการแจ้งเตือน Error ของทุกสถานะให้แสดงผลอยู่ภายใน Modal บริเวณใต้กล่องข้อความเหมือนกันทั้งหมดครับ สามารถปรับแก้จุดนี้แล้วส่งเข้ามาใหม่ได้หากต้องการ แต่ในภาพรวมระบบทำงานได้ถูกต้องครบถ้วนแล้ว
   ```
 - **How I responded:**
   ```
-  > * [ ]  ระบบ Security ในหน้าตั๋ว รองรับ User ที่เป็นคนละคนกับระบบล็อกจากรอบก่อนหน้า (URL /tickets/1) ได้อย่างถูกต้อง เพื่อประสบการณ์ใช้งานที่ดีขึ้น เมื่อผู้ใช้อยู่หน้า Ticket Details แล้วกด Switch Requester ระบบควรจะ Redirect กลับไปยังหน้าหลัก (My Tickets) อัตโนมัติ แทนที่จะปล่อยให้หน้าแสดง Error ขึ้นมา
-
-  Good idea. Working on it.
-  ```
-  ```
-  I've pushed an update for that.
-  Please check it out!
+  Good catch! I've updated the status confirmation modal so that validation errors for all transitions (including CLOSED and REOPENED) are consistently rendered directly inside the modal beneath the summary input.
   ```
 - **Reviewer comment I received (Re-review):**
+  Merge feature/lab3-staff-ticket-detail to lab3-staging branch
   ```
-  - [x] รันคำสั่ง npm test ในฝั่ง server และ client ไม่แสดง error ใด ๆ
-  - [x] หน้า Ticket Details แสดงข้อมูลครบถ้วน และช่องฟิลด์เป็นแบบ Read-only ห้ามแก้ไข
-  - [x] ระบบอัปโหลดทำงานได้จริง รองรับการลากไฟล์มาวาง (Drag & Drop) และจำกัดอัปโหลดได้สูงสุด 5 ไฟล์
-  - [x] ระบบดาวน์โหลดไฟล์ (Download Active Attachment) ทำงานได้ถูกต้อง โหลดไฟล์ออกมาได้ซึ่งมีคุณสมบัติที่เหมือนกับไฟล์ต้นฉบับ
-  - [x] ระบบลบไฟล์ (Soft Removal) ทำงานถูกต้อง มี Modal ถามเหตุผล (บังคับพิมพ์ 3 ตัวอักษรขึ้นไป) และไฟล์ถูกย้ายไปที่ตาราง Removed History พร้อมขีดฆ่าชื่อไฟล์
-  - [x] ทดสอบใช้คำสั่ง curl เพื่อโหลดไฟล์ที่ถูกลบทิ้งไปแล้ว แต่ระบบป้องกันได้สมบูรณ์ (ตอบกลับ HTTP 410 Gone)
-  - [x] ระบบ Create Ticket Attachment Staging ทำงานถูกต้อง สามารถแนบไฟล์ 1-2 ไฟล์รอไว้ที่กล่อง (Dropzone) ตอนกำลังสร้างตั๋วได้ โดยแสดงป้ายชื่อไฟล์บอกขนาดพร้อมปุ่มลบ [x] และเมื่อกด Submit สร้างตั๋ว ไฟล์จะถูกอัปโหลดไปผูกกับตั๋วใบใหม่สำเร็จ
-  - [x] ระบบ Security แน่นหนา ลองสลับ User ไปเป็นคนอื่น ระบบบล็อกการแอบดูตั๋ว (URL /tickets/1) ได้อย่างถูกต้อง และแก้ไขเมื่อผู้ใช้อยู่ในหน้า Ticket Details แล้วกด Switch Requester ระบบ Redirect ผู้ใช้กลับไปที่หน้าหน้าแรก (My Tickets) อัตโนมัติเรียบร้อยแล้ว
+  - [x] Error display in modals is now consistent
+  - [x] Ticket owner claim/assignment updates immediately
+  - [x] Decoupled IT Priority works without mutating requester priority
+  - [x] Internal notes display with amber security banner and are staff-only
+  - [x] All status transitions and resolution summaries function correctly
   ```
 - **How I responded:**
   ```
-  Thanks! Appreciate your time and effort in reviewing this.
+  Awesome, thanks for your feedback!
   ```
-- **Partner's response**: Merge feature/lab2-ticket-detail-attachments to lab2-staging branch
 
-### PR #21: `test(e2e): implement Playwright E2E suite and capture responsive visual screenshots (#12)`
-- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/21
-- **Reviewer comment I received:**
+### PR #39: `feat(admin): implement minimalist User Management screen and administrative safety guards (#31)`
+- **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/39
+- **Reviewer comment I received (Initial review):**
   ```
-  - [x] รันคำสั่ง npm run test:e2e ผ่านครบทั้ง 6 test suites บนหน้าจอทั้ง 3 ขนาด (Desktop, Tablet, Mobile)
-  - [x] รันคำสั่ง npm test และ npx tsc --noEmit ในฝั่ง server และ client ไม่แสดง error ใด ๆ
-  - [x] ทดสอบสร้างตั๋วผ่านหน้า Desktop โดยเลือกเป็น Jennifer Anderson กรอกข้อมูลพร้อมแนบรูป PNG ระบบสามารถสร้างตั๋วขึ้นมาแสดงโชว์ได้สำเร็จ
-  - [x] ทดสอบระบบไฟล์ในหน้า Ticket Details สามารถกด Download ไฟล์ที่แนบได้ปกติ และเมื่อกด Remove Attachment พร้อมใส่เหตุผล ไฟล์จะถูกย้ายไปที่ Removed Attachments History และไม่สามารถโหลดได้อีก
-  - [x] ทดสอบหน้าจอฝั่งมือถือ (Mobile Layout) ด้วยขนาดจอ 375px พบว่าตัวเมนู Header แสดงผลเป็นไอคอนและไม่ทับซ้อนกับปุ่ม Profile ส่วนหน้าตารางแสดงผลเป็นแบบการ์ดซ้อนกันได้เรียบร้อย และไม่มีแถบเลื่อนแนวนอนโผล่มา
-  - [x] ทดสอบระบบจำกัดสิทธิ์ โดยสลับ Acount ผ่านปุ่ม Profile ไปเป็น David Lee ระบบทำงานถูกต้อง โดยตั๋วของ Jennifer จะหายไปชั่วคราว
+  - Step 2: User Directory, Search, and Filtering:
+  ตัวข้อความคำว่า Users บนหน้าเว็บเป็นเพียงหัวข้อหน้าจอ (Page Heading) ขนาดใหญ่ที่ไม่ใช่ลิงก์ จึงไม่สามารถคลิกเพื่อ Navigate /admin/users ได้
+  จุดที่ต้องแก้ไข: ปรับชื่อลิงก์บน Navbar หรือ Route Link ให้ตรงตาม Specification และคำอธิบายใน PR Description ให้สามารถคลิกคำว่า "Users" เพื่อ Navigate ได้อย่างถูกต้อง หรือแก้ไข คำอธิบายใน PR Description ให้ถูกต้องไม่ขัดแย้งกัน
+  - ปุ่มเปิดดูลูกตารหัสผ่านซ้ำซ้อน (Duplicate Eye Toggle):
+  ใน Step 3 ช่องกรอกรหัสผ่านใน Drawer มีไอคอนลูกตาสำหรับกดดูรหัสผ่านซ้อนกัน 2 ปุ่มอยู่ติดกัน (น่าจะเกิดจากไอคอน Custom ของระบบ ไปซ้อนกับไอคอน Reveal Password อัตโนมัติของ Browser/Input) แนะนำให้ปรับสไตล์หรือซ่อนตัวซ้ำออกเพื่อให้ UI ดูสะอาดยิ่งขึ้น
+  - ไม่มีทางเลือกให้ออกจากหน้าเปลี่ยนรหัสผ่าน (Change Password Trap):
+  เมื่อล็อกอินด้วยบัญชีใหม่ที่ถูกบังคับเปลี่ยนรหัสผ่าน (David Lee) หน้านี้ถูก Lock Route ไว้แน่นหนาจนไม่สามารถกดออกจากหน้านี้ได้เลย หากผู้ใช้เกิดจำรหัสผ่านชั่วคราวไม่ได้ หรือต้องการเปลี่ยนไปล็อกอินด้วยบัญชีอื่น จะไม่มีปุ่มให้กดยกเลิกหรือ Sign Out ออกมาได้เลย จึงแนะนำว่าควรมีปุ่ม "Sign Out / Cancel" เพิ่มไว้ในหน้านี้ เพื่อให้ผู้ใช้สามารถออกจาก Session นั้นและกลับไปหน้า Login ปกติได้ครับ
+  - ความซ้ำซ้อนในการปิดบัญชีผู้ใช้ (Deactivate User Redundancy):
+  ในหน้า Edit User พบว่ามีตัวเลือกสถานะด้านบนเป็น Radio button Active Status: (•) Yes  ( ) No (ซึ่งถ้าเลือก No แล้วกด Save User ก็คือการ Deactivate) แต่ด้านล่างกลับมีปุ่มสีแดง Deactivate User แยกซ้ำเข้ามาอีกปุ่มหนึ่ง ซึ่งทั้งสองวิธีส่งผลลัพธ์เหมือนกันเป๊ะ แนะนำให้ยุบรวมเป็นรูปแบบเดียว เช่น ด้านบนแสดงเป็น Badge สถานะปัจจุบันให้อ่านอย่างเดียว แล้วใช้ปุ่มกด Deactivate ด้านล่างจัดการ เพื่อไม่ให้ผู้ใช้งานสับสนครับ
   ```
 - **How I responded:**
   ```
-  Appreciate your effort, as always.
+  Fixed all points:
+  - Updated navigation and PR description so route destinations are clear.
+  - Removed the redundant browser eye toggle using CSS styling.
+  - Added a Sign Out / Cancel button to /change-password so trapped users can exit to login.
+  - Streamlined user editing drawer: status is displayed as a badge and managed cleanly via the action button.
   ```
-- **Partner's response**: Merge feature/lab2-e2e-and-visuals to lab2-staging branch
+- **Reviewer comment I received (Re-review):**
+  Merge feature/lab3-admin-user-management to lab3-staging branch
+  ```
+  - [x] All feedback addressed cleanly
+  - [x] User provisioning and duplicate email protection working
+  - [x] Admin safety guards (self-deactivation and last active admin) enforced
+  - [x] Eye icon and change password navigation clean
+  ```
+- **How I responded:**
+  ```
+  Thanks a lot for the detailed review!
+  ```
 
 ## Pull Requests I reviewed for my partner
-### PR: docs: finalize lab 2 engineering specifications, api, ui, and test plans (#17)
-- **Link:** https://github.com/RBKarnz/TokTickIT/pull/17
+### PR: docs: Sprint 3 Specifications and Lab 2 Bug Fix Requirements
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/41
 - **My comment (Initial review):**
   ```
-  There're several topic missing from these files in docs/lab-02:
-  - api-spec.md
-  - ui-spec.md
-  - tests.md
-  - specification.md
+  This is table of what's missing from labsheet PDF.
+
+  | # | File | Section | Labsheet Source | Classification | Action Required |
+  |---|---|---|---|---|---|
+  | 1 | `tests.md` | § 3, § 4, § 5, § 6, § 7 | § 10, § 14 Part 3 | **Missing** | Add `Automated Test File` and `Final` columns to all test tables; format UI/E2E/Security sections into 7-column tables. |
+  | 2 | `specification.md`<br>`api-spec.md`<br>`ui-spec.md` | `spec` § 8<br>`api` § 6<br>`ui` § 7 | § 8.4 (mockup p. 10) | **Missing** | Add `resolutionSummary` to Ticket additive fields, API responses/requests (`GET /staff/tickets/:id`, `POST /status`), and UI controls. |
   ```
 - **Partner's response:**
   ```
-  Thanks Let me double-check those files and fix the missing parts.
+  Ready to merge Thanks!
   ```
 - **My comment (Re-review):**
-  Approved. Merge feature/lab2-specs2 to lab2-staging branch
+  Approved. Merge feature/lab3-specs to lab3-staging branch
   ```
-  All checked. Good to go.
+  All checked and aligned with the labsheet. Good to go.
+  ```
+
+### PR: feat(db): implement database migration, schema evolution, and idempotent seed data for Lab 3
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/42
+- **My comment (Initial review):**
+  ```
+  Found several issues during database verification:
+  1. Migration IT Priority: Existing tickets need an UPDATE statement to set itPriority = requestedPriority where itPriority is unassigned (per BR-29).
+  2. Seed Status Array: Runtime statuses array should include all 8 Lab 3 statuses (currently only 5).
+  3. Seed Ticket Upsert: Add itPriority to the update block in ticket upserts so existing records update on re-run.
+  4. Ticket Count Clarification: PR description mentions 176 tickets, but clean seed count is 155.
   ```
 - **Partner's response:**
   ```
-  All fixed Thank you for the feedback.
+  Thanks for catching these! All requested changes have been resolved in commit:
+  1. Migration IT Priority: Added UPDATE "Ticket" SET "itPriority" = "requestedPriority" WHERE "itPriority" = 'UNASSIGNED'; to properly initialize existing tickets per BR-29.
+  2. Seed Status Array: Expanded the runtime statuses array to include all 8 Lab 3 statuses (previously only 5 were included).
+  3. Seed Ticket Upsert: Added itPriority to the update: block in all ticket upserts so existing tickets get updated correctly on re-runs.
+  4. Ticket Count Clarification: The 176 tickets mentioned previously in the PR description was a typo. The intended seed count on a clean database is indeed 155 records (128 + 25 + 2). I have updated the PR description accordingly.
+  ```
+- **My comment (Re-review):**
+  Approved. Merge feature/lab3-db-migration to lab3-staging branch
+  ```
+  Verified: migration and idempotent seed run cleanly without errors. Good to merge.
   ```
 
-### PR: feat: Implement development requester context and selector UI (#25)
-- **Link:** https://github.com/RBKarnz/TokTickIT/pull/25
+### PR: fix(client): resolve 0 tickets pagination crash and complete status filter dropdown
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/43
 - **My comment:**
-  Approved. Merge feature/lab2-requester-context to lab2-staging branch
+  Approved. Merge feature/lab3-db-migration to lab3-staging branch
   ```
-  Correct UI layout, UI states work.
-
-  Good to go.
+  - The application gracefully handles the "0 tickets" empty state without throwing a totalPages undefined crash.
+  - Status filter dropdown includes all 8 valid system statuses.
+  - 8 system statuses display appropriate Zen Green semantic badge styles.
+  - Client builds without TypeScript compiler errors.
+  - Automated backend regression test suites pass.
   ```
 - **Partner's response:**
   ```
-  Awesome, thanks for the review.
+  Ready! Please go ahead and merge. Thank
   ```
 
-### PR: feat: Implement create ticket API and responsive UI (#26)
-- **Link:** https://github.com/RBKarnz/TokTickIT/pull/26
+### PR: feat(auth): implement authentication foundation, session management, and password change flows
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/44
+- **My comment (Initial review):**
+  ```
+  ### Findings
+
+  #### Major
+  1. ไม่มีกลไกการหมุนเวียน Session Token (Session Rotation) เมื่อเปลี่ยนรหัสผ่านสำเร็จ: เมื่อเรียก POST /api/auth/change-password สำเร็จ ระบบไม่ได้สร้าง session token ใหม่ ทำให้ยังคงใช้ token เดิม
+  2. ขาดการครอบ try/catch ใน Express Async Middleware requireAuth: อาจทำให้เกิด unhandled promise rejection หาก DB error
+  3. ยังมี localStorage.getItem('activeRequester') ค้างอยู่ใน AuthContext.tsx ซึ่งขัดกับ spec ของ Lab 3
+  ```
+- **Partner's response:**
+  ```
+  Fixed token rotation, added try/catch to requireAuth middleware, and completely cleaned up legacy activeRequester references.
+  ```
+- **My comment (Re-review):**
+  Approved. Merge feature/lab3-auth to lab3-staging branch
+  ```
+  - [x] Standard login flow
+  - [x] Role based web page
+  - [x] Can't login to inactive account
+  - [x] First login forces password change
+  - [x] Logging out cleared cookies
+
+  Tell me if you're ready for the merge.
+  ```
+- **Partner's response:**
+  ```
+  Yes, I am ready for the merge.
+  ```
+
+### PR: feat(requester): implement public comments, problem appears resolved, and internal note boundaries
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/45
+- **My comment (Initial review):**
+  ```
+  # Specs misalignment
+  Since they appears on several files, I'll put them here.
+
+  ### Internal Notes Route Path Mismatch with API Specification
+  * Severity: Major
+  * Requirement: docs/lab-03/api-spec.md Section 7 specifies POST/GET /staff/tickets/:ticketId/internal-notes.
+  * Problem: Implemented under /api/tickets/:id/internal-notes instead of the /api/staff/tickets/:id/internal-notes namespace.
+
+  ### Role Authorization Allows ADMINISTRATOR to Post Public Comments
+  * Severity: Major
+  * Location: POST /api/tickets/:id/public-comments
+  * Problem: In server/src/app.ts, ownership check is only for REQUESTER. Administrators can post comments, which violates the role authorization matrix (Admin is read-only).
+  * Suggested Fix: Add check to reject ADMINISTRATOR with 403 Forbidden.
+  ```
+- **Partner's response:**
+  ```
+  All ready on my end. You can merge now.
+  ```
+- **My comment (Re-review):**
+  Approved. Merge feature/lab3-requester-comments to lab3-staging branch
+  ```
+  - [x] Comment section working properly
+  - [x] Text section XSS safety
+  - [x] Clicking Problem Appears Resolved shows banner while ticket status badge remains unchanged
+
+  Tell me if you're ready for the merge.
+  ```
+
+### PR: feat(staff-queue): implement IT Staff Ticket Queue with Zen Green design, advanced filters, and pagination parity
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/46
 - **My comment:**
-  Approved. Merge feature/lab2-create-ticket to lab2-staging branch
+  Approved. Merge feature/lab3-staff-queue to lab3-staging branch
   ```
-  ## Tested
-  - [x] Submit form with empty input fields
-    - [x] Verify red field-level validation errors appear under each input
-    - [x] Verify zero API requests are sent in the network tab
-  - [x] Verify Summary and Description length validation
-  - [x] Verify created ticket uses the correct format (`TKT-YYYY-XXXXXX`)
-  - [x] Verify new ticket appears in the database with the selected `requesterId` and `currentStatus` set to `"NEW"`
+  - [x] /staff/queue page functions properly
+  - [x] Normal requesters can't access /staff/queue 
+
+  Tell me if you're ready for the merge.
   ```
 - **Partner's response:**
   ```
-  Awesome, thanks for verifying all the test cases.
+  Glad to hear that! It's good to go, please proceed with the merge.
   ```
 
-### PR: feat: Implement My Tickets dashboard with search and date filters (#27)
-- **Link:** https://github.com/RBKarnz/TokTickIT/pull/27
-- **My comment (Initial review):**
-  ```
-  I've checked. Everything aligns with acceptance criteria.
-
-  But there's one minor mistake.
-  When selected requester > go to switch requester > cancel
-  The cancel button doesn't work (and/or not disabled).
-  ```
-  Inline review comment on `README.md`:
-  ```
-  It should be either docker-compose or docker compose.
-  ```
-- **Partner's response:**
-  ```
-  Thanks! I'll get the Cancel button fixed right away.
-  ```
-  Inline response on `README.md`:
-  ```
-  Fixed! The Cancel button is now working. I also added some seed data and improved the pagination.
-  ```
-- **My comment (Re-review):**
-  Approved.
-  ```
-  Good work.
-
-  Verified tests:
-  - [x] The list displays tickets owned by the currently selected Requester
-  - [x] Search, filter, pagination works
-  - [x] Responsive UI
-  - [x] Failure state
-  ```
-- **Partner's response:**
-  ```
-  Feel free to merge if everything look good.
-  ```
-- **My Response:** Merge feature/lab2-my-tickets to lab2-staging branch
-
-### PR: feat: Implement Requester Ticket Detail and responsive UI (#28)
-- **Link:** https://github.com/RBKarnz/TokTickIT/pull/28
+### PR: feat(staff-operations): implement IT staff ticket operations, ownership management, and status transitions
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/47
 - **My comment:**
-  Approved.
+  Approved. Merge feature/lab3-staff-operations to lab3-staging branch
   ```
-  Verified tests:
-  - [x] Correct ticket detail URL `/tickets/<ticket-id>`
-  - [x] Access denied when trying to view detail of other requester's tickets
-  - [x] In ticket detail, all inputs are read-only, and status/priority badges render beautifully
+  - [x] Automated tests passed
+  - [x] Followed manual verification in the web browser. No issues.
 
-  Good work.
-  Just let me know if you're ready for the merge.
+  Tell me if you're ready for the merge.
   ```
 - **Partner's response:**
   ```
-  Ready! Please go ahead and merge. Thanks.
+  Glad to hear that! It's good to go, please proceed with the merge.
   ```
-- **My Response:** Merge feature/lab2-ticket-detail to lab2-staging branch
 
-### PR: feat: Implement attachment management with soft-delete (#29)
-- **Link:** https://github.com/RBKarnz/TokTickIT/pull/29
-- **My comment (Initial review):**
-  ````
-  I tried to run `npm test` in client and it fails.
+### PR: feat(admin): implement administrator user management API and UI
+- **Link:** https://github.com/RBKarnz/TokTickIT/pull/48
+- **My comment:**
+  Approved. Merge feature/lab3-admin-user-management to lab3-staging branch
+  ```
+  - [x] Code aligns perfectly with specs
+  - [x] Followed manual verification instruction and everything works great.
 
-  ```
-    ✓ tests/lab-01/App.test.tsx > App > renders the TokTickIT heading
-    ❯ tests/lab-01/App.test.tsx > App > shows Online and the seeded categories on success
-      × TestingLibraryElementError: Unable to find an accessible element with the role "button" and name /Check System/i
-    ❯ tests/lab-01/App.test.tsx > App > shows an Offline error message when the API is unavailable
-      × TestingLibraryElementError: Unable to find an accessible element with the role "button" and name /Check System/i
-    Test Files  1 failed (1)
-        Tests  2 failed | 1 passed (3)
-  ```
-  ````
-  Inline review comment on `client/src/api.ts`:
-  ```
-  ### Restore Placeholder Tabs on Ticket Detail (ui-spec.md §3.5): 
-  The tab bar (Public Comments, Internal Notes, Actions Taken) was dropped when adding the attachment card in commit 5fb5ad2.
-
-  Of course, it makes the UI cleaner removing unnecessary things for now.
-  But I think we should follow designed specs, shouldn't we?
-  Placeholder Sections: Tabs or sections such as "Public Comments", "Internal Notes", and "Actions Taken" must be visually present but treated as disabled or placeholders for Lab 2.
-  ```
-  Inline review comment on `client/src/pages/CreateTicketPage.tsx`:
-  ```
-  ### Handle BR-12 in Create Ticket (specification.md §5): 
-  If a user submits a ticket with attachments and an attachment upload fails after the ticket is already created:
-  - Current behavior: Catches the error and leaves the form open, which can create a duplicate ticket if the user clicks "Submit" again.
-  - Spec requirement: Still navigate to the success state with the ticket number, but show an alert/warning that some files failed to upload and can be retried in the Ticket Detail view.
-
-  BR-12: If ticket creation succeeds but the attachment upload fails, the system must NOT rollback the ticket creation. It should save the ticket, present a warning to the user about the failed upload, and allow them to retry uploading from the Ticket Detail screen.
+  Tell me if you're ready for the merge.
   ```
 - **Partner's response:**
   ```
-  On it! I'll get this fixed right away.
+  Glad to hear that! It's good to go, please proceed with the merge.
   ```
-  ```
-  I've pushed the fixes. Could you recheck?
-  ```
-- **My comment (Re-review):**
-  Approved.
-  ```
-  Checked. Aligns with specs now.
-  ```
-  ```
-  Good work.
-  - [x] Only allow maximum of 5 files
-  - [x] Soft remove working properly. (Tested with postman, unable to download soft-removed attachments)
-  - [x] Unable to download other requester's attachment from direct API call
-  - [x] Aligns with specs
-
-  Let me know if you're ready for the merge!
-  ```
-- **Partner's response:**
-  ```
-  Feel free to merge if everything look good.
-  ```
-- **My Response:** Merge feature/lab2-attachment to lab2-staging branch
-
-### PR: chore: Finalize tests, docs, and visual inspection for lab 2 (#30)
-- **Link:** https://github.com/RBKarnz/TokTickIT/pull/30
-- **My comment (Initial review):**
-  ```
-  - Some of the tests are not implemented.
-  - Remove docs/lab-02/image.png?
-  ```
-  Inline review comment on `docs/lab-02/image.png`:
-  ```
-  Should this be here?
-  ```
-- **Partner's response:**
-  ```
-  Thanks for catching that! I'll remove docs/lab-02/image.png and start implementing all those missing tests right away.
-  ```
-  ```
-  I have implemented the actual tests for all the client components and E2E flows, and also removed the image as requested. Could you please review it again?
-  ```
-- **My comment (Re-review):**
-  ```
-  There're 2 files that's still not implemented
-  - client/tests/lab-02/Responsive.test.tsx
-  - client/tests/lab-02/Style.test.tsx
-
-  ### Mention
-  Don't forget to update docs/lab-02/tests.md after everything is done:
-  - In the Planned Tests table, change the Final column from - to Pass.
-  - In Section 6 (Final Results), replace *(To be updated after implementation)* with a confirmation that all 15 test suites and 18 automated tests pass locally.
-  ```
-- **Partner's response:**
-  ```
-  I've pushed the fixes. Could you recheck?
-  ```
-- **My comment (Third review):**
-  ```
-  - Minor mistake in docs/lab-02/reviewer.md (commented)
-  - Still unable to follow E2E tests instruction. There's no package.json in root directory so it don't know what to install **probably**
-  <img width="1452" height="256" alt="Image" src="https://github.com/user-attachments/assets/80db319f-d861-49de-9449-08b21bb787c3" />
-  ```
-  Inline review comment on `docs/lab-02/reviewer.md`:
-  ```
-  (Issue #23 is the actual issue for Attachment Management; #29 was the PR number).
-  ```
-- **Partner's response:**
-  Inline response on `docs/lab-02/reviewer.md`:
-  ```
-  Changes pushed. Let me know what you think now.
-  ```
-- **My comment (Fourth review):**
-  ```
-  Very minor mistake in Issue link.
-  ```
-  Inline review comment on `docs/lab-02/reviewer.md`:
-  ```
-  The issue link should be changed from `https://github.com/RBKarnz/TokTickIT/issues/29` to `https://github.com/RBKarnz/TokTickIT/issues/23`
-  ```
-- **Partner's response:**
-  ```
-  Could you please check this again? Feel free to merge if everything looks good.
-  ```
-- **My comment (Final review):**
-  Approved.
-  ```
-  Looking good now.
-  Front-end, back-end, end-to-end tests passed.
-  ```
-- **My Response:** Merge feature/lab2-final-tests to lab2-staging branch

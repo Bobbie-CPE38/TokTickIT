@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./e2e/lab-02",
+  testDir: "./e2e/lab-03",
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
@@ -21,7 +21,7 @@ export default defineConfig({
     },
     {
       name: "tablet",
-      testMatch: /requester-ticket-flow\.spec\.ts/,
+      testMatch: /.*(authentication|first-login|staff-ticket-flow|user-administration)\.spec\.ts/,
       use: {
         viewport: { width: 768, height: 1024 },
         userAgent:
@@ -30,7 +30,7 @@ export default defineConfig({
     },
     {
       name: "mobile",
-      testMatch: /requester-ticket-flow\.spec\.ts/,
+      testMatch: /.*(authentication|first-login|staff-ticket-flow|user-administration)\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 375, height: 667 },

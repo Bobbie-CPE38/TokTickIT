@@ -34,11 +34,31 @@ const mockRelatedSystems: api.RelatedSystem[] = [
 
 describe("Lab 2 Create Ticket UI Tests (UI-01, UI-02, UI-03, UI-04)", () => {
   beforeEach(() => {
+    window.history.pushState({}, "", "/");
     localStorage.clear();
+    localStorage.setItem("toktickit_auth_token", "mock-jwt-token");
+    localStorage.setItem(
+      "toktickit_auth_user",
+      JSON.stringify({
+        id: 1,
+        name: "Jennifer Anderson",
+        email: "jennifer.anderson@kmutt.ac.th",
+        role: "REQUESTER",
+        mustChangePassword: false,
+      })
+    );
     vi.restoreAllMocks();
     vi.spyOn(api, "fetchActiveRequesters").mockResolvedValue(mockActiveRequesters);
     vi.spyOn(api, "fetchCategories").mockResolvedValue(mockCategories);
     vi.spyOn(api, "fetchRelatedSystems").mockResolvedValue(mockRelatedSystems);
+    vi.spyOn(api, "fetchCurrentUser").mockResolvedValue({
+      id: 1,
+      name: "Jennifer Anderson",
+      email: "jennifer.anderson@kmutt.ac.th",
+      role: "REQUESTER",
+      isActive: true,
+      mustChangePassword: false,
+    });
   });
 
   afterEach(() => {
@@ -47,15 +67,14 @@ describe("Lab 2 Create Ticket UI Tests (UI-01, UI-02, UI-03, UI-04)", () => {
   });
 
   /**
-   * UI-04: App navigation when no requester is selected (AC-02, BR-03)
+   * UI-04: App navigation when no requester is authenticated
    */
-  it("UI-04: prompts/redirects to Development Requester selection modal when no requester is selected (AC-02, BR-03)", async () => {
+  it("UI-04: prompts/redirects to Login screen when not authenticated and confirms selector removal", async () => {
+    localStorage.clear();
     render(<App />);
 
-    expect(await screen.findByText(/Select Development Requester/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Select a Development Requester to test requester-specific ticket behavior/i)
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Sign in to your account/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Select Development Requester/i)).not.toBeInTheDocument();
   });
 
   /**
