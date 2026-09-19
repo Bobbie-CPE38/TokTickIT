@@ -91,16 +91,16 @@ describe("Lab 3 Admin User Management UI Tests (UI-10, UI-11, UI-12, UI-13)", ()
     expect(screen.getByRole("columnheader", { name: /status/i })).toBeInTheDocument();
 
     // Verify all 3 mock users appear in table
-    expect(screen.getByText("John Smith")).toBeInTheDocument();
-    expect(screen.getByText("Michael Brown")).toBeInTheDocument();
-    expect(screen.getByText("Jennifer Anderson")).toBeInTheDocument();
+    expect(screen.getAllByText("John Smith").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Michael Brown").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Jennifer Anderson").length).toBeGreaterThanOrEqual(1);
 
     // Search for "Jennifer"
     const searchInput = screen.getByPlaceholderText(/search users by name or email/i);
     fireEvent.change(searchInput, { target: { value: "Jennifer" } });
 
     await waitFor(() => {
-      expect(screen.getByText("Jennifer Anderson")).toBeInTheDocument();
+      expect(screen.getAllByText("Jennifer Anderson").length).toBeGreaterThanOrEqual(1);
       expect(screen.queryByText("Michael Brown")).not.toBeInTheDocument();
     });
 
@@ -112,7 +112,7 @@ describe("Lab 3 Admin User Management UI Tests (UI-10, UI-11, UI-12, UI-13)", ()
     fireEvent.change(roleSelect, { target: { value: "IT_STAFF" } });
 
     await waitFor(() => {
-      expect(screen.getByText("Michael Brown")).toBeInTheDocument();
+      expect(screen.getAllByText("Michael Brown").length).toBeGreaterThanOrEqual(1);
       expect(screen.queryByText("Jennifer Anderson")).not.toBeInTheDocument();
       expect(screen.queryByText("John Smith")).not.toBeInTheDocument();
     });
@@ -126,7 +126,8 @@ describe("Lab 3 Admin User Management UI Tests (UI-10, UI-11, UI-12, UI-13)", ()
     renderWithProviders(<UserManagementScreen />);
 
     // Wait for users to load
-    expect(await screen.findByText("John Smith")).toBeInTheDocument();
+    const johnElements = await screen.findAllByText("John Smith");
+    expect(johnElements.length).toBeGreaterThanOrEqual(1);
 
     // Click "Edit" on John Smith (the logged-in admin: id 1)
     const editButtons = screen.getAllByRole("button", { name: /edit/i });
@@ -197,9 +198,10 @@ describe("Lab 3 Admin User Management UI Tests (UI-10, UI-11, UI-12, UI-13)", ()
 
     renderWithProviders(<UserManagementScreen />);
 
-    expect(await screen.findByText("Michael Brown")).toBeInTheDocument();
+    const mbElements = await screen.findAllByText("Michael Brown");
+    expect(mbElements.length).toBeGreaterThanOrEqual(1);
 
-    // Click "Edit" for Michael Brown (second user, index 1)
+    // Click "Edit" for Michael Brown (second user in table, index 1)
     const editButtons = screen.getAllByRole("button", { name: /edit/i });
     fireEvent.click(editButtons[1]);
 
@@ -213,7 +215,7 @@ describe("Lab 3 Admin User Management UI Tests (UI-10, UI-11, UI-12, UI-13)", ()
 
     // Wait for drawer to close and table to show updated name
     await waitFor(() => {
-      expect(screen.getByText("Michael Brown Updated")).toBeInTheDocument();
+      expect(screen.getAllByText("Michael Brown Updated").length).toBeGreaterThanOrEqual(1);
     });
   });
 });

@@ -457,51 +457,85 @@ export const UserManagementScreen: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0" style={{ fontSize: "0.875rem" }}>
-              <thead style={{ backgroundColor: "#F8FAFC", color: "#52665D" }}>
-                <tr>
-                  <th scope="col" className="ps-4 py-3 fw-semibold">
-                    Name
-                  </th>
-                  <th scope="col" className="py-3 fw-semibold">
-                    Email
-                  </th>
-                  <th scope="col" className="py-3 fw-semibold">
-                    Role
-                  </th>
-                  <th scope="col" className="py-3 fw-semibold">
-                    Status
-                  </th>
-                  <th scope="col" className="pe-4 py-3 text-end fw-semibold">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((u) => (
-                  <tr key={u.id}>
-                    <td className="ps-4 py-3 fw-medium" style={{ color: "#1C2D27" }}>
-                      {u.name}
-                    </td>
-                    <td className="py-3 text-muted">{u.email}</td>
-                    <td className="py-3">{renderRoleBadge(u.role)}</td>
-                    <td className="py-3">{renderStatusBadge(u.isActive)}</td>
-                    <td className="pe-4 py-3 text-end">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary"
-                        style={{ borderRadius: "4px", minWidth: "60px" }}
-                        onClick={() => handleOpenEdit(u)}
-                      >
-                        Edit
-                      </button>
-                    </td>
+          <>
+            {/* Desktop / Tablet User Directory Table (≥ 768px) */}
+            <div className="table-responsive d-none d-md-block">
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: "0.875rem" }}>
+                <thead style={{ backgroundColor: "#F8FAFC", color: "#52665D" }}>
+                  <tr>
+                    <th scope="col" className="ps-4 py-3 fw-semibold">
+                      Name
+                    </th>
+                    <th scope="col" className="py-3 fw-semibold">
+                      Email
+                    </th>
+                    <th scope="col" className="py-3 fw-semibold">
+                      Role
+                    </th>
+                    <th scope="col" className="py-3 fw-semibold">
+                      Status
+                    </th>
+                    <th scope="col" className="pe-4 py-3 text-end fw-semibold">
+                      Action
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id}>
+                      <td className="ps-4 py-3 fw-medium" style={{ color: "#1C2D27" }}>
+                        {u.name}
+                      </td>
+                      <td className="py-3 text-muted">{u.email}</td>
+                      <td className="py-3">{renderRoleBadge(u.role)}</td>
+                      <td className="py-3">{renderStatusBadge(u.isActive)}</td>
+                      <td className="pe-4 py-3 text-end">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          style={{ borderRadius: "4px", minWidth: "60px" }}
+                          onClick={() => handleOpenEdit(u)}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Stacked User Cards (< 768px) */}
+            <div className="d-md-none p-3 d-flex flex-column gap-3" data-testid="admin-user-cards-container">
+              {filteredUsers.map((u) => (
+                <div
+                  key={u.id}
+                  data-testid="admin-user-card"
+                  className="card border rounded-3 p-3 shadow-none bg-white"
+                  style={{ borderColor: "#E2E8F0" }}
+                >
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <span className="fw-semibold fs-6" style={{ color: "#1C2D27" }}>
+                      {u.name}
+                    </span>
+                    {renderStatusBadge(u.isActive)}
+                  </div>
+                  <div className="text-muted small mb-2">{u.email}</div>
+                  <div className="d-flex justify-content-between align-items-center pt-2 border-top">
+                    <div>{renderRoleBadge(u.role)}</div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center"
+                      style={{ minHeight: "44px", minWidth: "80px", borderRadius: "6px" }}
+                      onClick={() => handleOpenEdit(u)}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

@@ -15,7 +15,7 @@
 | #38 | feature/lab3-staff-ticket-detail -> lab3-staging | Approved |
 | #39 | feature/lab3-admin-user-management -> lab3-staging | Approved |
 
-### PR #26: `docs(lab3-specs): complete Sprint 3 engineering specifications and test plans (#25)`
+### PR #26: `docs(lab3-specs): finalize Lab 3 engineering specifications, api, ui, and test plans (#25)`
 - **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/26
 - **Reviewer comment I received:**
   ```
@@ -57,7 +57,7 @@
   Thanks for reviewing!
   ```
 
-### PR #35: `refactor(arch): reconstruct full-stack architecture for separation of concerns, maintainability, and feature scalability (#34)`
+### PR #35: `refactor(arch): architectural reconstruction for feature-based hybrid directory structure`
 - **Link:** https://github.com/Bobbie-CPE38/TokTickIT/pull/35
 - **Reviewer comment I received:**
   Merge feature/lab3-arch-reconstruction to lab3-staging branch
@@ -170,7 +170,7 @@
   ```
 
 ## Pull Requests I reviewed for my partner
-### PR: docs: Sprint 3 Specifications and Lab 2 Bug Fix Requirements
+### PR: docs: Sprint 3 Specifications and Lab 2 Bug Fix Requirements (#41)
 - **Link:** https://github.com/RBKarnz/TokTickIT/pull/41
 - **My comment (Initial review):**
   ```
@@ -191,7 +191,7 @@
   All checked and aligned with the labsheet. Good to go.
   ```
 
-### PR: feat(db): implement database migration, schema evolution, and idempotent seed data for Lab 3
+### PR: feat(db): implement database migration, schema evolution, and idempotent seed data for Lab 3 (#42)
 - **Link:** https://github.com/RBKarnz/TokTickIT/pull/42
 - **My comment (Initial review):**
   ```
@@ -215,7 +215,7 @@
   Verified: migration and idempotent seed run cleanly without errors. Good to merge.
   ```
 
-### PR: fix(client): resolve 0 tickets pagination crash and complete status filter dropdown
+### PR: fix(client): resolve 0 tickets pagination crash and complete status filter dropdown (#43)
 - **Link:** https://github.com/RBKarnz/TokTickIT/pull/43
 - **My comment:**
   Approved. Merge feature/lab3-db-migration to lab3-staging branch
@@ -231,7 +231,7 @@
   Ready! Please go ahead and merge. Thank
   ```
 
-### PR: feat(auth): implement authentication foundation, session management, and password change flows
+### PR: feat(auth): implement authentication foundation, session management, and password change flows (#44)
 - **Link:** https://github.com/RBKarnz/TokTickIT/pull/44
 - **My comment (Initial review):**
   ```
@@ -262,7 +262,7 @@
   Yes, I am ready for the merge.
   ```
 
-### PR: feat(requester): implement public comments, problem appears resolved, and internal note boundaries
+### PR: feat(requester): implement public comments, problem appears resolved, and internal note boundaries (#45)
 - **Link:** https://github.com/RBKarnz/TokTickIT/pull/45
 - **My comment (Initial review):**
   ```
@@ -294,7 +294,7 @@
   Tell me if you're ready for the merge.
   ```
 
-### PR: feat(staff-queue): implement IT Staff Ticket Queue with Zen Green design, advanced filters, and pagination parity
+### PR: feat(staff-queue): implement IT Staff Ticket Queue with Zen Green design, advanced filters, and pagination parity (#46)
 - **Link:** https://github.com/RBKarnz/TokTickIT/pull/46
 - **My comment:**
   Approved. Merge feature/lab3-staff-queue to lab3-staging branch
@@ -309,7 +309,7 @@
   Glad to hear that! It's good to go, please proceed with the merge.
   ```
 
-### PR: feat(staff-operations): implement IT staff ticket operations, ownership management, and status transitions
+### PR: feat(staff-operations): implement IT staff ticket operations, ownership management, and status transitions (#47)
 - **Link:** https://github.com/RBKarnz/TokTickIT/pull/47
 - **My comment:**
   Approved. Merge feature/lab3-staff-operations to lab3-staging branch
@@ -324,7 +324,7 @@
   Glad to hear that! It's good to go, please proceed with the merge.
   ```
 
-### PR: feat(admin): implement administrator user management API and UI
+### PR: feat(admin): implement administrator user management API and UI (#48)
 - **Link:** https://github.com/RBKarnz/TokTickIT/pull/48
 - **My comment:**
   Approved. Merge feature/lab3-admin-user-management to lab3-staging branch

@@ -346,4 +346,58 @@ describe("Protected Route Guard and Intended Destination UI Tests", () => {
     // Ensure My Tickets header is NOT rendered
     expect(screen.queryByRole("heading", { name: /^my tickets$/i })).not.toBeInTheDocument();
   });
+
+  /**
+   * 9. Explicit logout clears intended destination so subsequent staff login lands on /queue
+   */
+  it("clears intended destination on explicit logout so next staff login lands on /queue instead of previous user route", async () => {
+    localStorage.setItem("toktickit_auth_token", "valid-requester-token");
+    localStorage.setItem("toktickit_auth_user", JSON.stringify(mockRequesterUser));
+    window.history.pushState({}, "", "/tickets/101");
+
+    vi.spyOn(api, "fetchCurrentUser").mockResolvedValue(mockRequesterUser);
+    vi.spyOn(api, "logout").mockResolvedValue(undefined);
+    vi.spyOn(api, "login").mockResolvedValue({
+      token: "valid-staff-token",
+      user: mockStaffUser,
+    });
+    vi.spyOn(api, "fetchStaffTickets").mockResolvedValue({
+      data: [],
+      pagination: { total: 0, page: 1, pageSize: 10, totalPages: 1 },
+    });
+
+    render(<App />);
+
+    // Initially rendered on /tickets/101
+    expect(await screen.findByText(/TKT-2026-000101/i)).toBeInTheDocument();
+
+    // Click Profile and Sign Out
+    const profileBtn = screen.getByRole("button", { name: /profile/i });
+    fireEvent.click(profileBtn);
+
+    const signOutBtn = screen.getByRole("button", { name: /sign out/i });
+    fireEvent.click(signOutBtn);
+
+    // Should be at /login
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/login");
+    });
+    expect(await screen.findByRole("heading", { name: /sign in to your account/i })).toBeInTheDocument();
+
+    // Log in as Michael Brown (IT Staff)
+    vi.spyOn(api, "fetchCurrentUser").mockResolvedValue(mockStaffUser);
+    const emailInput = screen.getByLabelText(/email address/i);
+    const passwordInput = screen.getByLabelText(/^password/i);
+    const submitBtn = screen.getByRole("button", { name: /sign in/i });
+
+    fireEvent.change(emailInput, { target: { value: "staff.michael@toktickit.com" } });
+    fireEvent.change(passwordInput, { target: { value: "Password123!" } });
+    fireEvent.click(submitBtn);
+
+    // Verify user is redirected to /queue, NOT /tickets/101!
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/queue");
+    });
+    expect(await screen.findByRole("heading", { name: /IT Staff Ticket Queue/i })).toBeInTheDocument();
+  });
 });

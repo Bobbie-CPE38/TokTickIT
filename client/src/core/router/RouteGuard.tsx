@@ -16,10 +16,10 @@ export function isViewPermittedForRole(view: AppView, role?: string): boolean {
     return ["portal", "my-tickets", "create-ticket", "ticket-detail"].includes(view);
   }
   if (role === "IT_STAFF") {
-    return ["portal", "my-tickets", "create-ticket", "ticket-detail", "queue", "staff-ticket-detail"].includes(view);
+    return ["portal", "create-ticket", "queue", "staff-ticket-detail"].includes(view);
   }
   if (role === "ADMINISTRATOR") {
-    return ["portal", "my-tickets", "create-ticket", "ticket-detail", "user-management", "queue", "staff-ticket-detail"].includes(view);
+    return ["portal", "create-ticket", "user-management", "queue", "staff-ticket-detail"].includes(view);
   }
   return false;
 }
