@@ -389,7 +389,7 @@ Clicking "Keep My Drafts & Refresh" re-fetches the ticket data while keeping any
 
 ### 9.1. Desktop Viewport ($\ge 992\text{ px}$)
 - Header displays complete brand, horizontal navigation tabs, and user profile dropdown.
-- Dashboard KPI cards display in a 5-column grid (IT Staff) or 4-column grid (Requester).
+- Dashboard KPI cards display in a balanced 5-column grid across both IT Staff (New, Open, In Progress, Waiting for Requester, My Assigned) and Requester dashboards (My Open, Waiting for Me [Attention Required], In Progress, Resolved, Closed).
 - Bottom dashboard area renders two side-by-side columns: 8/12 grid for "My Recent Tickets", 4/12 grid for "Quick Actions".
 - Actions Taken cards display full horizontal metadata (date, performer, badges) alongside action text.
 

@@ -139,7 +139,7 @@ All error responses adhere to a consistent JSON format:
   }
   ```
   *Field Requirements:*
-  - `actionDateTime`: Optional ISO 8601 string; defaults to current server timestamp if omitted.
+  - `actionDateTime`: Optional ISO 8601 string; defaults to current server timestamp if omitted. Cannot be set more than 24 hours into the future.
   - `description`: Required string, 3 to 2,000 characters.
   - `result`: Required string, 3 to 2,000 characters.
   - `isFollowUpRequired`: Boolean, defaults to `false`.
@@ -152,7 +152,7 @@ All error responses adhere to a consistent JSON format:
   - `401 Unauthorized`: Missing or invalid token.
   - `403 Forbidden`: Authenticated user is a Requester or inactive staff.
   - `404 Not Found`: Ticket does not exist.
-  - `422 Unprocessable Entity`: Validation failure (e.g. `isFollowUpRequired = true` but `followUpNote` is empty, description under 3 characters, or performing user is inactive).
+  - `422 Unprocessable Entity`: Validation failure (e.g. `isFollowUpRequired = true` but `followUpNote` is empty, description under 3 characters, `actionDateTime` more than 24 hours in the future, or performing user is inactive).
 
 ---
 
@@ -197,7 +197,7 @@ All error responses adhere to a consistent JSON format:
   }
   ```
   *Field Requirements:*
-  - `status`: Required enum (`NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CLOSED`, `REOPENED`, `CANCELLED`).
+  - `status` (or `currentStatus`): Required enum (`NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `RESOLVED`, `CLOSED`, `REOPENED`, `CANCELLED`). *Note on Backwards Compatibility:* To prevent breaking changes with existing Lab 3 test suites, the backend accepts both `status` and `currentStatus` interchangeably (normalizing `status ?? currentStatus`).
   - `resolutionSummary`: Required when transitioning to `RESOLVED` (string, 5 to 1,000 characters). Preserved when transitioning to `CLOSED`.
   - `expectedUpdatedAt`: Optional ISO 8601 string. If supplied, the backend compares this against the Ticket's current database `updatedAt`.
 - **Concurrency Conflict Behavior (Section 6.1):**
@@ -297,6 +297,7 @@ All error responses adhere to a consistent JSON format:
   - `resolved`: Tickets where `requesterId = req.user.id` AND `currentStatus = 'RESOLVED'`.
   - `closed`: Tickets where `requesterId = req.user.id` AND `currentStatus = 'CLOSED'`.
   - `recentTickets`: Up to 5 most recently updated tickets owned by user, sorted by `updatedAt DESC`.
+  - *Drill-Down Query Parameter Contract:* To support one-click drill-down navigation from the Requester Dashboard "My Open Tickets" metric card, `GET /api/tickets` explicitly accepts `filter=open`, returning tickets matching all active statuses (`NEW`, `OPEN`, `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `REOPENED`).
 
 ---
 
@@ -361,7 +362,7 @@ All error responses adhere to a consistent JSON format:
   - `myAssigned`: All tickets where `ticketOwnerId = req.user.id` AND `currentStatus \notin ['CLOSED', 'CANCELLED']`.
   - `unassigned`: All active tickets where `ticketOwnerId IS NULL` AND `currentStatus \notin ['CLOSED', 'CANCELLED']`.
   - `myActionsCount`: Total count of Actions Taken recorded across all tickets where `performedByUserId = req.user.id`.
-  - `trends`: Calculated by comparing live count against the count at 00:00:00 UTC of the current calendar day.
+  - `trends`: Calculated by comparing live count against the count at 00:00:00 UTC (07:00:00 ICT) of the current calendar day, providing an authoritative and reproducible baseline for automated tests and demonstrations.
   - `urgentTickets`: Up to 5 most recently updated active tickets with `itPriority = 'URGENT'` and `currentStatus \notin ['CLOSED', 'CANCELLED']`.
 
 ---
@@ -415,7 +416,7 @@ All error responses adhere to a consistent JSON format:
 | **Reference** | `GET` | `/api/categories` | Active ticket categories | Authenticated |
 | | `GET` | `/api/related-systems` | Active related systems | Authenticated |
 | **Tickets** | `POST` | `/api/tickets` | Create ticket (bound to auth user) | `REQUESTER`, `IT_STAFF` |
-| | `GET` | `/api/tickets` | My Tickets list | `REQUESTER` (own) |
+| | `GET` | `/api/tickets` | My Tickets list (supports `filter=open` and `status` query filters) | `REQUESTER` (own) |
 | | `GET` | `/api/tickets/:id` | Ticket detail | `REQUESTER` (own) |
 | | `PATCH` | `/api/tickets/:id/resolve-indication`| Advisory problem resolved flag | `REQUESTER` (own) |
 | **Attachments** | `POST` | `/api/tickets/:id/attachments` | Upload attachment ($\le 5\text{ MB}$) | Permitted roles |

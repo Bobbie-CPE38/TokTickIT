@@ -72,6 +72,10 @@ e2e/lab-04/
 | **UI-10** | UI | AC-09, BR-09 | TicketWorkflow Resolution Gate: Requires non-empty resolution summary | Validation message shown if summary is empty or $< 5$ characters | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
 | **UI-11** | UI | AC-11, BR-12 | TicketWorkflow Concurrency conflict dialog | Receiving HTTP 409 displays Stale Record Dialog with "Keep My Drafts & Refresh" action | `client/tests/lab-04/TicketWorkflow.test.tsx` | Pass |
 | **UI-12** | UI | AC-16, BR-17 | Form input preservation on API failure across all screens | Inputs retain entered text when network error or 422 occurs | `client/tests/lab-04/ActionsTaken.test.tsx` | Pass |
+| **UNIT-01** | Unit | AC-12, BR-15 | Day-over-day trend delta calculation helper unit test | Computes correct $\pm N$ deltas relative to 00:00:00 UTC (07:00:00 ICT) baseline | `server/tests/lab-04/staff-dashboard.api.test.ts` | Pass |
+| **UNIT-02** | Unit | AC-03, BR-05 | Conditional follow-up note validation and sanitization unit test | Validates 3-1000 chars when true, coerces to null when false | `server/tests/lab-04/actions-taken.api.test.ts` | Pass |
+| **STYLE-01** | UI style | DoD-01, AC-12 | Zen Green tokens and badge color contrast verification | Status and priority badges match designated Zen Green palette and contrast ratios | `client/tests/lab-04/StaffDashboard.test.tsx` | Pass |
+| **RESP-01** | Responsive | DoD-03, AC-12 | Responsive layout verification across desktop, tablet, and mobile viewports | Dashboard cards stack responsively; touch targets measure $\ge 44\text{ px}$; zero horizontal scroll | `e2e/lab-04/dashboards.spec.ts` | Pass |
 | **E2E-01** | E2E | AC-01, AC-08 | IT Staff Workflow: Open Ticket $\rightarrow$ Record Action Taken $\rightarrow$ Resolve Ticket through Gate | Complete operational lifecycle verified | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
 | **E2E-02** | E2E | AC-03 | Actions Taken follow-up validation (Handout Example) | Validation prevents submit without follow-up note in full workflow | `e2e/lab-04/actions-taken-flow.spec.ts` | Pass |
 | **E2E-03** | E2E | AC-08, AC-11 | Resolution Gate Blocking & Concurrency Collision Recovery in Browser | Verified across desktop, tablet, and mobile viewports | `e2e/lab-04/ticket-resolution.spec.ts` | Pass |
@@ -85,7 +89,7 @@ e2e/lab-04/
 |---|---|---|
 | **AC-01** (Create Valid Actions Taken) | `API-01`, `API-02`, `API-03`, `UI-06`, `E2E-01` | `server/tests/lab-04/actions-taken.api.test.ts`<br>`client/tests/lab-04/ActionsTaken.test.tsx`<br>`e2e/lab-04/actions-taken-flow.spec.ts` |
 | **AC-02** (Requester Dashboard Data Isolation) | `API-17`, `API-18`, `UI-04`, `UI-05`, `E2E-04` | `server/tests/lab-04/requester-dashboard.api.test.ts`<br>`client/tests/lab-04/RequesterDashboard.test.tsx`<br>`e2e/lab-04/dashboards.spec.ts` |
-| **AC-03** (Follow-Up Note Validation Gate) | `API-04`, `API-05`, `UI-07`, `E2E-02` | `server/tests/lab-04/actions-taken.api.test.ts`<br>`client/tests/lab-04/ActionsTaken.test.tsx`<br>`e2e/lab-04/actions-taken-flow.spec.ts` |
+| **AC-03** (Follow-Up Note Validation Gate) | `API-04`, `API-05`, `UNIT-02`, `UI-07`, `E2E-02` | `server/tests/lab-04/actions-taken.api.test.ts`<br>`client/tests/lab-04/ActionsTaken.test.tsx`<br>`e2e/lab-04/actions-taken-flow.spec.ts` |
 | **AC-04** (Inactive Performer Rejection) | `API-06` | `server/tests/lab-04/actions-taken.api.test.ts` |
 | **AC-05** (Action Taken Update) | `API-07` | `server/tests/lab-04/actions-taken.api.test.ts` |
 | **AC-06** (Requester Read-Only View of Actions) | `API-08`, `API-10`, `UI-08` | `server/tests/lab-04/actions-taken.api.test.ts`<br>`client/tests/lab-04/ActionsTaken.test.tsx` |
@@ -94,11 +98,17 @@ e2e/lab-04/
 | **AC-09** (Resolution Gate Enforcement - Summary) | `API-12`, `API-13`, `UI-10` | `server/tests/lab-04/ticket-workflow.api.test.ts`<br>`client/tests/lab-04/TicketWorkflow.test.tsx` |
 | **AC-10** (Advisory Requester Resolution) | `API-14` | `server/tests/lab-04/ticket-workflow.api.test.ts` |
 | **AC-11** (Optimistic Concurrency Conflict Detection) | `API-15`, `UI-11`, `E2E-03` | `server/tests/lab-04/ticket-workflow.api.test.ts`<br>`client/tests/lab-04/TicketWorkflow.test.tsx`<br>`e2e/lab-04/ticket-resolution.spec.ts` |
-| **AC-12** (IT Staff Dashboard Metrics & Drill-Down) | `API-19`, `API-20`, `API-24`, `UI-01`, `UI-02`, `E2E-04` | `server/tests/lab-04/staff-dashboard.api.test.ts`<br>`client/tests/lab-04/StaffDashboard.test.tsx`<br>`e2e/lab-04/dashboards.spec.ts` |
+| **AC-12** (IT Staff Dashboard Metrics & Drill-Down) | `API-19`, `API-20`, `API-24`, `UNIT-01`, `STYLE-01`, `RESP-01`, `UI-01`, `UI-02`, `E2E-04` | `server/tests/lab-04/staff-dashboard.api.test.ts`<br>`client/tests/lab-04/StaffDashboard.test.tsx`<br>`e2e/lab-04/dashboards.spec.ts` |
 | **AC-13** (Admin Dashboard User Governance Summary) | `API-21` | `server/tests/lab-04/staff-dashboard.api.test.ts` |
 | **AC-14** (Complete Permitted Status Lifecycle) | `API-16` | `server/tests/lab-04/ticket-workflow.api.test.ts` |
 | **AC-15** (Legacy Ticket Backwards Compatibility) | `API-22`, `API-23` | `server/tests/lab-04/ticket-workflow.api.test.ts` |
 | **AC-16** (Form State Retention & Double-Click Guard)| `UI-12` | `client/tests/lab-04/ActionsTaken.test.tsx` |
+
+*Note on Part 6 Rubric Traceability Alignment:*
+In accordance with Handout Section 14 (Part 6), the test suite demonstrates the full Ticket Detail lifecycle:
+- Ticket Assignment & Inactive-Assignee Rejection: Verified via `staff-ticket-detail.api.test.ts` (`API-14`, `API-15`) and `StaffTicketDetail.test.tsx`.
+- Ticket Status Transition, Completion (Resolution Gate), and Cancellation: Verified via `ticket-workflow.api.test.ts` (`API-11`, `API-13`, `API-16`), `TicketWorkflow.test.tsx`, and `ticket-resolution.spec.ts`.
+- Actions Taken List, Create, Edit, Validation, and Execution States: Verified via `actions-taken.api.test.ts` (`API-01` through `API-10`), `ActionsTaken.test.tsx` (`UI-06`, `UI-07`, `UI-08`), and `actions-taken-flow.spec.ts`.
 
 ---
 
