@@ -143,7 +143,7 @@ All error responses adhere to a consistent JSON format:
   - `description`: Required string, 3 to 2,000 characters.
   - `result`: Required string, 3 to 2,000 characters.
   - `isFollowUpRequired`: Boolean, defaults to `false`.
-  - `followUpNote`: Required string (3 to 1,000 characters) if `isFollowUpRequired = true`. Must be null or omitted if `false`.
+  - `followUpNote`: Required string (3 to 1,000 characters) if `isFollowUpRequired = true`. If `isFollowUpRequired = false`, optional and coerced to `null`.
   - `attachmentNotes`: Optional string, up to 500 characters.
   - *Note:* `performedByUserId` is automatically bound to `req.user.id`. Any value sent in request body is ignored.
 - **Response `201 Created`:** Returns the newly created `ActionTaken` object with loaded `performedBy` user details.
@@ -263,6 +263,7 @@ All error responses adhere to a consistent JSON format:
   {
     "metrics": {
       "myOpenTickets": 3,
+      "waitingForRequester": 1,
       "inProgress": 2,
       "resolved": 5,
       "closed": 12
@@ -291,6 +292,7 @@ All error responses adhere to a consistent JSON format:
   ```
   *Calculation Rules:*
   - `myOpenTickets`: Tickets where `requesterId = req.user.id` AND `currentStatus \in ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'REOPENED']`.
+  - `waitingForRequester`: Tickets where `requesterId = req.user.id` AND `currentStatus = 'WAITING_FOR_REQUESTER'` (identifies attention-required requests awaiting requester input).
   - `inProgress`: Tickets where `requesterId = req.user.id` AND `currentStatus = 'IN_PROGRESS'`.
   - `resolved`: Tickets where `requesterId = req.user.id` AND `currentStatus = 'RESOLVED'`.
   - `closed`: Tickets where `requesterId = req.user.id` AND `currentStatus = 'CLOSED'`.
@@ -300,7 +302,7 @@ All error responses adhere to a consistent JSON format:
 
 ### 4.2. IT Staff Dashboard
 - **Path:** `GET /api/dashboards/staff`
-- **Description:** Returns concise operational queue metrics, day-over-day trends, and recent accessible tickets for IT Staff and Administrators.
+- **Description:** Returns concise operational queue metrics, day-over-day trends, urgent tickets, user actions count, and recent accessible tickets for IT Staff and Administrators.
 - **Authorization:** `IT_STAFF`, `ADMINISTRATOR`. (Requesters receive `403 Forbidden`).
 - **Response `200 OK`:**
   ```json
@@ -310,7 +312,9 @@ All error responses adhere to a consistent JSON format:
       "open": 23,
       "inProgress": 18,
       "waitingForRequester": 7,
-      "myAssigned": 16
+      "myAssigned": 16,
+      "unassigned": 8,
+      "myActionsCount": 42
     },
     "trends": {
       "newDelta": 3,
@@ -319,6 +323,20 @@ All error responses adhere to a consistent JSON format:
       "waitingForRequesterDelta": 1,
       "myAssignedDelta": 4
     },
+    "urgentTickets": [
+      {
+        "id": 9,
+        "ticketNumber": "TKT-2026-000210",
+        "summary": "Core database server outage",
+        "currentStatus": "IN_PROGRESS",
+        "itPriority": "URGENT",
+        "ticketOwner": {
+          "id": 2,
+          "name": "Michael Brown"
+        },
+        "updatedAt": "2026-05-12T08:00:00.000Z"
+      }
+    ],
     "recentTickets": [
       {
         "id": 12,
@@ -341,7 +359,10 @@ All error responses adhere to a consistent JSON format:
   - `inProgress`: All tickets where `currentStatus = 'IN_PROGRESS'`.
   - `waitingForRequester`: All tickets where `currentStatus = 'WAITING_FOR_REQUESTER'`.
   - `myAssigned`: All tickets where `ticketOwnerId = req.user.id` AND `currentStatus \notin ['CLOSED', 'CANCELLED']`.
+  - `unassigned`: All active tickets where `ticketOwnerId IS NULL` AND `currentStatus \notin ['CLOSED', 'CANCELLED']`.
+  - `myActionsCount`: Total count of Actions Taken recorded across all tickets where `performedByUserId = req.user.id`.
   - `trends`: Calculated by comparing live count against the count at 00:00:00 UTC of the current calendar day.
+  - `urgentTickets`: Up to 5 most recently updated active tickets with `itPriority = 'URGENT'` and `currentStatus \notin ['CLOSED', 'CANCELLED']`.
 
 ---
 
@@ -357,7 +378,9 @@ All error responses adhere to a consistent JSON format:
       "open": 23,
       "inProgress": 18,
       "waitingForRequester": 7,
-      "myAssigned": 16
+      "myAssigned": 16,
+      "unassigned": 8,
+      "myActionsCount": 42
     },
     "trends": {
       "newDelta": 3,
@@ -366,6 +389,7 @@ All error responses adhere to a consistent JSON format:
       "waitingForRequesterDelta": 1,
       "myAssignedDelta": 4
     },
+    "urgentTickets": [ ... ],
     "userStats": {
       "totalUsers": 25,
       "activeUsers": 23,
@@ -399,8 +423,8 @@ All error responses adhere to a consistent JSON format:
 | | `PATCH` | `/api/attachments/:id/soft-remove` | Soft-remove with mandatory reason | Permitted roles |
 | **Staff Queue** | `GET` | `/api/staff/tickets` | Search/filter/paginate queue | `IT_STAFF`, `ADMIN` |
 | | `GET` | `/api/staff/tickets/:id` | Full staff ticket detail | `IT_STAFF`, `ADMIN` |
-| | `PATCH` | `/api/staff/tickets/:id/assignment` | Claim or reassign ticket owner | `IT_STAFF`, `ADMIN` |
-| | `PATCH` | `/api/staff/tickets/:id/priority` | Update IT priority | `IT_STAFF`, `ADMIN` |
+| | `PATCH` | `/api/staff/tickets/:id/assignment` | Claim or reassign ticket owner (supports optimistic concurrency via `expectedUpdatedAt`) | `IT_STAFF`, `ADMIN` |
+| | `PATCH` | `/api/staff/tickets/:id/priority` | Update IT priority (supports optimistic concurrency via `expectedUpdatedAt`) | `IT_STAFF`, `ADMIN` |
 | **Discussions** | `GET` | `/api/tickets/:id/comments` | Retrieve public comments | Permitted roles |
 | | `POST` | `/api/tickets/:id/comments` | Create public comment | Permitted roles |
 | | `GET` | `/api/tickets/:id/notes` | Retrieve internal notes | `IT_STAFF`, `ADMIN` |

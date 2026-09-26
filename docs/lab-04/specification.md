@@ -95,7 +95,7 @@ Per Section 4.2 of the Lab 4 handout, the following capabilities are strictly ou
 - **FR-02 (Action Taken Performer Decoupling):** The system must allow any active IT Staff member or Administrator to record an Action Taken on a Ticket, regardless of whether that user is the assigned Ticket Owner.
 - **FR-03 (Edit Action Taken):** The system must allow active IT Staff and Administrators to update the Description, Result, Follow-Up Required flag, Follow-up Note, and Attachment Notes of an existing Action Taken.
 - **FR-04 (Requester Actions Taken Visibility):** Authenticated Requesters must be able to view all Actions Taken recorded on tickets they own in a clean, read-only interface. Requesters are strictly prohibited from creating, editing, or deleting Actions Taken.
-- **FR-05 (Inactive Performer / Assignee Rejection):** The system must reject recording or updating an Action Taken if the performing user is inactive (`isActive = false`).
+- **FR-05 (Inactive Performer / Assignee Rejection):** The system must reject recording or updating an Action Taken if the performing user is inactive (`isActive = false`). When assigning or reassigning a Ticket's owner (`ticketOwnerId`), the system must reject assigning to inactive or non-staff users with HTTP `422 Unprocessable Entity`.
 - **FR-06 (Action Taken Chronological Ordering):** Actions Taken must be retrieved and rendered in stable chronological order (oldest to newest by `actionDateTime` / `createdAt`) to preserve the historical audit trail.
 
 ### 4.2. Ticket Status Lifecycle & Resolution Gate
@@ -116,20 +116,23 @@ Per Section 4.2 of the Lab 4 handout, the following capabilities are strictly ou
 ### 4.4. Role-Appropriate Dashboards
 - **FR-15 (Requester Dashboard Metrics):** The backend must provide a concise metrics endpoint for Requesters calculating:
   - `myOpenTickets`: Count of owned tickets with status $\in \{\text{NEW}, \text{OPEN}, \text{IN\_PROGRESS}, \text{WAITING\_FOR\_REQUESTER}, \text{REOPENED}\}$.
+  - `waitingForRequester`: Count of owned tickets with status $= \text{WAITING\_FOR\_REQUESTER}$ ("Attention Required" items awaiting Requester reply).
   - `inProgress`: Count of owned tickets with status $= \text{IN\_PROGRESS}$.
   - `resolved`: Count of owned tickets with status $= \text{RESOLVED}$.
   - `closed`: Count of owned tickets with status $= \text{CLOSED}$.
 - **FR-16 (Requester Recent Tickets):** The Requester Dashboard must return up to 5 most recently updated tickets owned by the authenticated Requester, with ticket number, summary, status badge, priority badge, and formatted date.
-- **FR-17 (Requester Drill-Down Links):** Clicking any metric card on the Requester Dashboard must navigate the user to `/tickets` pre-filtered by the corresponding status parameter.
+- **FR-17 (Requester Drill-Down Links):** Clicking any metric card on the Requester Dashboard must navigate the user to `/tickets` pre-filtered by the corresponding status parameter (`filter=open`, `status=WAITING_FOR_REQUESTER`, `status=IN_PROGRESS`, `status=RESOLVED`, `status=CLOSED`).
 - **FR-18 (IT Staff Dashboard Operational Metrics):** The backend must provide an operational metrics endpoint for IT Staff calculating:
   - `new`: Count of all tickets with status $= \text{NEW}$.
   - `open`: Count of all tickets with status $= \text{OPEN}$.
   - `inProgress`: Count of all tickets with status $= \text{IN\_PROGRESS}$.
   - `waitingForRequester`: Count of all tickets with status $= \text{WAITING\_FOR\_REQUESTER}$.
   - `myAssigned`: Count of tickets where `ticketOwnerId = currentUser.id` and status $\notin \{\text{CLOSED}, \text{CANCELLED}\}$.
+  - `unassigned`: Count of active tickets where `ticketOwnerId IS NULL` and status $\notin \{\text{CLOSED}, \text{CANCELLED}\}$.
+  - `myActionsCount`: Total count of Actions Taken performed by the authenticated staff user (`performedByUserId = currentUser.id`).
   - Day-over-day deltas ($\pm N$) comparing current metric values against counts at 00:00:00 UTC of the previous calendar day.
-- **FR-19 (IT Staff Recent Tickets & Quick Actions):** The IT Staff Dashboard must return up to 5 most recently updated accessible tickets, alongside quick-action shortcuts for "+ Create Ticket", "Search Tickets" (linking to `/queue` with search parameter), and "My Queue" (linking to `/queue?owner=me`).
-- **FR-20 (IT Staff Drill-Down Links):** Clicking any metric card on the IT Staff Dashboard must navigate to `/queue` with appropriate query parameters (`status=NEW`, `status=OPEN`, `status=IN_PROGRESS`, `status=WAITING_FOR_REQUESTER`, `owner=me`).
+- **FR-19 (IT Staff Recent & Urgent Tickets & Quick Actions):** The IT Staff Dashboard must return up to 5 most recently updated accessible tickets, prioritized urgent tickets (`itPriority = 'URGENT'`), and the user's recent Actions Taken, alongside quick-action shortcuts for "+ Create Ticket", "Search Tickets" (linking to `/queue` with search parameter), and "My Queue" (linking to `/queue?owner=me`).
+- **FR-20 (IT Staff Drill-Down Links):** Clicking any metric card on the IT Staff Dashboard must navigate to `/queue` with appropriate query parameters (`status=NEW`, `status=OPEN`, `status=IN_PROGRESS`, `status=WAITING_FOR_REQUESTER`, `owner=me`, `owner=unassigned`).
 - **FR-21 (Administrator Dashboard Governance Extension):** The Administrator Dashboard must provide all operational metrics from the IT Staff Dashboard, plus a concise user-governance summary: total users, active users, inactive users, requesters count, staff count, and administrator count.
 
 ### 4.5. Application Hardening & Regression
@@ -145,19 +148,19 @@ Per Section 4.2 of the Lab 4 handout, the following capabilities are strictly ou
 | Rule ID | Rule Title | Detailed Business Rule Statement |
 |---|---|---|
 | **BR-01** | **Single Ticket Association** | An `ActionTaken` record belongs to exactly one `Ticket`. It cannot be shared across multiple tickets or reassigned to a different ticket. |
-| **BR-02** | **Independent Action Performer** | The `TicketOwner` coordinates the Ticket as a whole, but an `ActionTaken` may be performed and recorded by any active IT Staff member or Administrator, independent of ticket ownership. |
+| **BR-02** | **Independent Action Performer & Ticket Assignment** | The `TicketOwner` coordinates the Ticket as a whole (assigned via `ticketOwnerId` to an active IT Staff or Administrator), but an `ActionTaken` may be performed and recorded by any active IT Staff member or Administrator, independent of ticket ownership. |
 | **BR-03** | **Authoritative Performer Binding** | Upon `ActionTaken` creation, the backend automatically binds `performedByUserId = req.user.id`. Any performer identifier supplied in the client request body is ignored. |
-| **BR-04** | **Active Performer Validation** | Actions Taken can only be created or updated by users with `isActive = true` and role $\in \{\text{IT\_STAFF}, \text{ADMINISTRATOR}\}$. Deactivated staff accounts or Requesters attempting to create/update Actions Taken must be rejected with HTTP `403 Forbidden` or HTTP `422 Unprocessable Entity`. |
-| **BR-05** | **Conditional Follow-up Note Mandate** | If `isFollowUpRequired = true`, the `followUpNote` field is strictly mandatory and must contain between 3 and 1,000 characters after whitespace trimming. If `isFollowUpRequired = false`, `followUpNote` is optional and should be null or empty. Submissions violating this rule must be rejected with HTTP `422 Unprocessable Entity`. |
+| **BR-04** | **Active Performer & Assignee Validation** | Actions Taken can only be created or updated by users with `isActive = true` and role $\in \{\text{IT\_STAFF}, \text{ADMINISTRATOR}\}$. Assigning or reassigning a ticket to an inactive or non-staff user is strictly rejected with HTTP `422 Unprocessable Entity`. Deactivated staff accounts or Requesters attempting to create/update Actions Taken are rejected with HTTP `403 Forbidden` or HTTP `422 Unprocessable Entity`. |
+| **BR-05** | **Conditional Follow-up Note Mandate** | If `isFollowUpRequired = true`, the `followUpNote` field is strictly mandatory and must contain between 3 and 1,000 characters after whitespace trimming. If `isFollowUpRequired = false`, `followUpNote` is optional and coerced to `null` by the backend. Submissions violating this rule must be rejected with HTTP `422 Unprocessable Entity`. |
 | **BR-06** | **Action Taken Field Validations** | • `description`: Required, 3 to 2,000 characters.<br>• `result`: Required, 3 to 2,000 characters.<br>• `attachmentNotes`: Optional, up to 500 characters.<br>• `actionDateTime`: ISO 8601 timestamp, cannot be set more than 24 hours into the future. |
 | **BR-07** | **Requester Read-Only Action Visibility** | Requesters can view all Actions Taken recorded on tickets they own. Requesters are strictly prohibited from creating, updating, or soft-removing Actions Taken; any write attempt by a Requester returns HTTP `403 Forbidden`. Requests for tickets not owned by the Requester return HTTP `404 Not Found`. |
 | **BR-08** | **Action Taken Chronological Integrity** | Actions Taken are ordered chronologically by `actionDateTime` (or `createdAt`) ascending. Updates to an Action Taken update `updatedAt` but preserve the original `id`, `ticketId`, `performedByUserId`, and `createdAt`. |
 | **BR-09** | **Ticket Resolution Gate** | A Ticket cannot be transitioned to `RESOLVED` unless:<br>1. The Ticket contains at least one recorded `ActionTaken` record (`actionsTaken.length \ge 1`).<br>2. A non-empty `resolutionSummary` ($\ge 5$ and $\le 1,000$ characters) is provided.<br>Any attempt to transition to `RESOLVED` without satisfying both conditions is rejected with HTTP `422 Unprocessable Entity`. |
 | **BR-10** | **Advisory Requester Resolution Indication** | A Requester signaling "Problem Appears Resolved" (`isRequesterResolved = true`) provides an advisory banner to IT Staff. This indicator does NOT alter the Ticket's `currentStatus` or bypass the formal Resolution Gate. |
 | **BR-11** | **Permitted Status Transition Matrix** | Status transitions must follow the authorized state machine:<br>• `NEW` $\rightarrow$ `OPEN`, `IN_PROGRESS`, `CANCELLED`<br>• `OPEN` $\rightarrow$ `IN_PROGRESS`, `WAITING_FOR_REQUESTER`, `CANCELLED`<br>• `IN_PROGRESS` $\rightarrow$ `WAITING_FOR_REQUESTER`, `RESOLVED`, `CANCELLED`<br>• `WAITING_FOR_REQUESTER` $\rightarrow$ `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `RESOLVED` $\rightarrow$ `CLOSED`, `REOPENED`<br>• `REOPENED` $\rightarrow$ `IN_PROGRESS`, `RESOLVED`, `CANCELLED`<br>• `CLOSED` $\rightarrow$ `REOPENED` (IT Staff/Admin only; requires confirmation and rationale)<br>• `CANCELLED` $\rightarrow$ Terminal (no transitions permitted)<br>Unauthorized transitions are rejected with HTTP `422 Unprocessable Entity`. |
-| **BR-12** | **Optimistic Concurrency Protection** | Updating a Ticket requires matching the client's `expectedUpdatedAt` against the database `updatedAt`. If the database timestamp is newer, the request must fail with HTTP `409 Conflict`. The client must refresh the ticket before retrying. |
-| **BR-13** | **Requester Data Isolation** | All Requester Dashboard metrics and ticket lists must be queried exclusively with `WHERE requesterId = currentUser.id`. Accessing metrics of other users is impossible, and querying another user's ticket returns HTTP `404 Not Found`. |
-| **BR-14** | **Authoritative Dashboard Calculation** | All dashboard metrics and day-over-day trends must be calculated on the backend directly from the PostgreSQL database using authoritative timestamps and SQL aggregations. Frontend clients must never calculate metrics from paginated ticket subsets. |
+| **BR-12** | **Optimistic Concurrency Protection** | Updating a Ticket's status, assignment, or priority requires matching the client's `expectedUpdatedAt` against the database `updatedAt`. If the database timestamp is newer, the request must fail with HTTP `409 Conflict`. The client must refresh the ticket before retrying. |
+| **BR-13** | **Requester Data Isolation & Attention-Required Scope** | All Requester Dashboard metrics and ticket lists must be queried exclusively with `WHERE requesterId = currentUser.id`. Accessing metrics of other users is impossible, and querying another user's ticket returns HTTP `404 Not Found`. Attention-required tickets waiting for requester input (`WAITING_FOR_REQUESTER`) are explicitly calculated and isolated to the authenticated requester. |
+| **BR-14** | **Authoritative Dashboard Calculation** | All dashboard metrics (including `unassigned` tickets and `myActionsCount` for staff) and day-over-day trends must be calculated on the backend directly from the PostgreSQL database using authoritative timestamps and SQL aggregations. Frontend clients must never calculate metrics from paginated ticket subsets. |
 | **BR-15** | **Trend Calculation Time Boundaries** | Trend deltas ($\pm N$ from yesterday) on the IT Staff Dashboard compare the current live count against the count of matching records created or updated prior to 00:00:00 UTC of the current calendar day. |
 | **BR-16** | **Legacy Ticket Backwards Compatibility** | Historical tickets with zero Actions Taken remain valid and operable. Status progression for legacy tickets requires recording at least one Action Taken prior to resolution. Dashboard counts include legacy tickets seamlessly. |
 | **BR-17** | **Form Input Retention on Failure** | UI forms (Action Taken modal/inline, status transition modal, comments, notes) must retain all user input when an API call fails with validation (`422`), conflict (`409`), or network errors (`500`). |
@@ -283,13 +286,13 @@ Full request/response schemas, validation rules, and error codes are detailed in
 ## 9. Acceptance Criteria
 
 - **AC-01 (Create Valid Actions Taken):**
-  - *Given* an authenticated IT Staff user viewing an accessible Ticket,
-  - *When* the user submits valid Action Taken data (description, result, follow-up toggle),
-  - *Then* the record is persisted under the correct Ticket, `performedByUserId` is auto-bound to the authenticated user, and HTTP `201 Created` is returned.
-- **AC-02 (Requester Dashboard Data Isolation):**
+  - *Given* a permitted IT Staff user and valid data,
+  - *When* an Actions Taken is created,
+  - *Then* it is saved under the correct Ticket with the authenticated creator (`performedByUserId`) and approved ticket assignee (`ticketOwnerId`), returning HTTP `201 Created`.
+- **AC-02 (Requester Dashboard Data Isolation & Attention-Required Metrics):**
   - *Given* an authenticated Requester,
   - *When* dashboard data is retrieved via `GET /api/dashboards/requester`,
-  - *Then* only metrics and recent tickets owned by that Requester are returned, with zero leakage of other requesters' tickets.
+  - *Then* only metrics (including total open tickets, attention-required tickets waiting for requester, in progress, resolved, closed) and recent tickets owned by that Requester are returned, with zero leakage of other requesters' tickets.
 - **AC-03 (Follow-Up Note Validation Gate):**
   - *Given* an IT Staff user submitting an Action Taken,
   - *When* `isFollowUpRequired` is set to `true` but `followUpNote` is empty or missing,
@@ -326,10 +329,10 @@ Full request/response schemas, validation rules, and error codes are detailed in
   - *Given* a Ticket currently at version timestamp $T_1$,
   - *When* User A submits a status update with `expectedUpdatedAt = T_0` ($T_0 < T_1$),
   - *Then* the backend aborts the update with HTTP `409 Conflict`, and the UI displays a conflict dialog prompting the user to refresh.
-- **AC-12 (IT Staff Dashboard Metrics & Drill-Down):**
+- **AC-12 (IT Staff Dashboard Metrics, Current-User Actions & Drill-Down):**
   - *Given* an authenticated IT Staff user,
   - *When* viewing the IT Staff Dashboard,
-  - *Then* accurate counts for New, Open, In Progress, Waiting for Requester, and My Assigned tickets are displayed with trend badges, and clicking any card navigates to `/queue` with the corresponding query filter.
+  - *Then* accurate counts for New, Open, In Progress, Waiting for Requester, My Assigned, Unassigned, and current user's Actions Taken count (`myActionsCount`) are displayed with trend badges, urgent tickets are accessible, and clicking any card navigates to `/queue` with the corresponding query filter.
 - **AC-13 (Admin Dashboard User Governance Summary):**
   - *Given* an authenticated Administrator,
   - *When* viewing the Administrator Dashboard,
@@ -381,8 +384,13 @@ Full request/response schemas, validation rules, and error codes are detailed in
 3. **Resolution Gate Enforcement Rules:**
    *Decision:* Transitioning to `RESOLVED` requires both: (1) `actionsTaken.length \ge 1` and (2) a non-empty `resolutionSummary` ($\ge 5$ characters). If an IT Staff member attempts to resolve a ticket with 0 actions, the backend returns HTTP `422 Unprocessable Entity` and the UI confirmation modal blocks the action with a clear explanatory alert.
 4. **Optimistic Concurrency Strategy:**
-   *Decision:* Ticket status updates accept an optional `expectedUpdatedAt` field. If supplied, the backend compares this with `ticket.updatedAt`. If mismatched, HTTP `409 Conflict` is returned. If omitted (for backward compatibility with legacy scripts), the update proceeds.
+   *Decision:* Ticket status, assignment, and priority updates accept an optional `expectedUpdatedAt` field. If supplied, the backend compares this with `ticket.updatedAt`. If mismatched, HTTP `409 Conflict` is returned. If omitted (for backward compatibility with legacy scripts), the update proceeds.
 5. **Trend Calculation Time Window:**
    *Decision:* Day-over-day deltas ($\pm N$ from yesterday) compare live counts against counts at 00:00:00 UTC of the current calendar day, providing an objective, reproducible reference boundary for automated tests and demonstrations.
 6. **Administrator Dashboard Structure:**
    *Decision:* Administrators possess full operational IT Staff capabilities and governance authority. Rather than duplicating screens, the Admin Dashboard presents the operational IT queue metric cards alongside a clean user-governance summary card (Total, Active, Inactive, Staff, Admin counts).
+7. **Reconciliation of Part 6 Grading Rubric Terminology:**
+   *Decision:* Section 14 (Part 6) of the grading rubric requires: *"Demonstrate list, create, assign, edit, status transition, complete, cancel, validation, inactive-assignee rejection, role restrictions, safe failures, and responsive behavior. Show different Actions Taken on one Ticket."* The system architecture reconciles these terms through the cohesive Ticket Detail view:
+   - **Ticket Assignment & Inactive Rejection:** Handled by ticket coordination (`ticketOwnerId` update via `PATCH /api/staff/tickets/:id/assignment`), which validates and rejects inactive users.
+   - **Status Transition, Complete, and Cancel:** Handled by the Ticket lifecycle machine via `PATCH /api/staff/tickets/:id/status`, where a ticket is completed through the Resolution Gate (`RESOLVED` $\rightarrow$ `CLOSED`) or aborted via `CANCELLED`.
+   - **Action Taken List, Create, Edit, Validation & Execution States:** Handled via `/api/tickets/:id/actions-taken`, where individual actions capture performed work, validate non-empty results and conditional follow-up notes, and visually reflect execution states (`[ Follow-Up Required ]` vs `[ Completed ]`).

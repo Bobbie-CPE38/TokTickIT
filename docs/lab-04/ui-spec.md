@@ -144,7 +144,6 @@ All screens, components, and interactive states integrate seamlessly into a sing
 - **Administrator:**
   - `[ Dashboard ]` (links to `/` or `/dashboard`)
   - `[ Admin ]` (links to `/admin/users` User Management)
-  - `[ + Create Ticket ]` (links to `/tickets/new`)
 - **Active Navigation Tab Indicator:** The currently active nav tab displays a solid `#0B7A46` bottom indicator bar (height 3px), font weight `600`, and secondary green text.
 
 ---
@@ -157,25 +156,25 @@ All screens, components, and interactive states integrate seamlessly into a sing
 ```
 +---------------------------------------------------------------------------------------------------+
 | Welcome back, Michael!                                                              [ Refresh ]   |
-| Here's what's happening with your queue today.                                                    |
+| Here's what's happening with your queue today.   (Unassigned: 8 | My Actions Recorded: 42)        |
 +---------------------------------------------------------------------------------------------------+
 | [ New ]          | [ Open ]         | [ In Progress ]  | [ Waiting for Req ] | [ My Assigned ]     |
 | 14               | 23               | 18               | 7                   | 16                  |
 | +3 from yest.    | -2 from yest.    | -1 from yest.    | +1 from yest.       | +4 from yest.       |
 +---------------------------------------------------------------------------------------------------+
-| My Recent Tickets                           [ View all ] | Quick Actions                          |
+| My Recent & Urgent Tickets                  [ View all ] | Quick Actions                          |
 | -------------------------------------------------------- | -------------------------------------- |
-| TKT-2026-000234                       [ In Progress ]    | [ + ] Create Ticket                    |
-| Laptop battery drains quickly         May 12, 09:14 AM   |       Submit a new request             |
+| TKT-2026-000210   [ URGENT ]           [ In Progress ]   | [ + ] Create Ticket                    |
+| Core database server outage           May 12, 08:00 AM   |       Submit a new request             |
 |                                                          |                                        |
-| TKT-2026-000230                       [ Open ]           | [ 🔍 ] Search Tickets                  |
-| Printer keeps showing offline         May 10, 02:40 PM   |        Find tickets in queue           |
+| TKT-2026-000234                       [ In Progress ]    | [ 🔍 ] Search Tickets                  |
+| Laptop battery drains quickly         May 12, 09:14 AM   |        Find tickets in queue           |
 |                                                          |                                        |
-| TKT-2026-000228                       [ In Progress ]    | [ 📋 ] My Queue                        |
-| Outlook freezing intermittently      May 9, 05:22 PM    |        View assigned tickets           |
+| TKT-2026-000230                       [ Open ]           | [ 📋 ] My Queue                        |
+| Printer keeps showing offline         May 10, 02:40 PM   |        View assigned tickets           |
 |                                                          |                                        |
-| TKT-2026-000223                       [ Open ]           |                                        |
-| Phone not receiving calls             May 8, 10:05 AM    |                                        |
+| TKT-2026-000228                       [ In Progress ]    |                                        |
+| Outlook freezing intermittently      May 9, 05:22 PM    |                                        |
 |                                                          |                                        |
 | TKT-2026-000198                       [ Resolved ]       |                                        |
 | VPN disconnects randomly              May 8, 04:15 PM    |                                        |
@@ -203,11 +202,13 @@ All screens, components, and interactive states integrate seamlessly into a sing
    - Count: Active tickets where `ticketOwnerId = currentUser.id`.
    - Trend: Day-over-day change ($\pm N$).
    - Drill-down click: Navigates to `/queue?owner=me`.
+6. **Secondary Queue Stats Bar & Actions Metric:**
+   - Displays concise operational summary: Unassigned queue count (`unassigned: 8`, clicking links to `/queue?owner=unassigned`) and personal action audit volume (`myActionsCount: 42`).
 
 ### 5.3. Recent Tickets & Quick Actions Section
-- **Left Column (8/12 grid): "My Recent Tickets"**
-  - Displays top 5 most recently updated accessible tickets.
-  - Each item shows: Ticket Number (clickable link to `/queue/:id`), Summary, Status Badge, and Formatted Timestamp.
+- **Left Column (8/12 grid): "My Recent & Urgent Tickets"**
+  - Displays urgent tickets (`itPriority = 'URGENT'`) pinned or badged at the top, followed by up to 5 most recently updated accessible tickets.
+  - Each item shows: Ticket Number (clickable link to `/queue/:id`), Priority badge (if High or Urgent), Summary, Status Badge, and Formatted Timestamp.
   - Header has "View all" link pointing to `/queue`.
   - Empty state (if 0 tickets): Displays a subtle icon and "No recent tickets to display."
 - **Right Column (4/12 grid): "Quick Actions"**
@@ -228,9 +229,9 @@ All screens, components, and interactive states integrate seamlessly into a sing
 | Welcome, Jennifer!                                                                                |
 | Here's the latest on your requests.                                                               |
 +---------------------------------------------------------------------------------------------------+
-| My Open Tickets  | In Progress       | Resolved          | Closed                                 |
-| 3                | 2                 | 5                 | 12                                     |
-| [ View all ]     | [ View all ]      | [ View all ]      | [ View all ]                           |
+| My Open Tickets  | Waiting for Me    | In Progress       | Resolved          | Closed             |
+| 3                | 1 [Attention!]    | 2                 | 5                 | 12                 |
+| [ View all ]     | [ View all ]      | [ View all ]      | [ View all ]      | [ View all ]       |
 +---------------------------------------------------------------------------------------------------+
 | My Recent Tickets                           [ View all ] | Quick Actions                          |
 | -------------------------------------------------------- | -------------------------------------- |
@@ -255,13 +256,17 @@ All screens, components, and interactive states integrate seamlessly into a sing
 1. **My Open Tickets:**
    - Count: Owned tickets with active statuses ($\in \{\text{NEW}, \text{OPEN}, \text{IN\_PROGRESS}, \text{WAITING\_FOR\_REQUESTER}, \text{REOPENED}\}$).
    - "View all" links to `/tickets?filter=open`.
-2. **In Progress:**
+2. **Waiting for Me (Attention Required):**
+   - Count: Owned tickets where `currentStatus = 'WAITING_FOR_REQUESTER'`.
+   - Renders with prominent amber accent badge (`#D97706` text, `#FEF3C7` background) indicating that IT Staff is waiting for the requester's response.
+   - "View all" links to `/tickets?status=WAITING_FOR_REQUESTER`.
+3. **In Progress:**
    - Count: Owned tickets with status $= \text{IN_PROGRESS}$.
    - "View all" links to `/tickets?status=IN_PROGRESS`.
-3. **Resolved:**
+4. **Resolved:**
    - Count: Owned tickets with status $= \text{RESOLVED}$.
    - "View all" links to `/tickets?status=RESOLVED`.
-4. **Closed:**
+5. **Closed:**
    - Count: Owned tickets with status $= \text{CLOSED}$.
    - "View all" links to `/tickets?status=CLOSED`.
 
