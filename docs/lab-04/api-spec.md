@@ -252,6 +252,108 @@ All error responses adhere to a consistent JSON format:
 
 ---
 
+### 3.2. Update Ticket Assignment (with Concurrency Check)
+- **Path:** `PATCH /api/staff/tickets/:id/assignment`
+- **Description:** Claims ticket ownership or reassigns ticket ownership to any active IT Staff member or Administrator. Enforces active assignee validation and optimistic concurrency checking.
+- **Authorization:** `IT_STAFF`, `ADMINISTRATOR`. (Requesters receive `403 Forbidden`).
+- **Path Parameters:**
+  - `id` (integer, required): Target Ticket ID.
+- **Request Body:**
+  ```json
+  {
+    "ticketOwnerId": 2,
+    "expectedUpdatedAt": "2026-05-12T09:14:00.000Z"
+  }
+  ```
+  *Field Requirements:*
+  - `ticketOwnerId`: Integer or null (null unassigns the ticket). Must reference an active user with role `IT_STAFF` or `ADMINISTRATOR`.
+  - `expectedUpdatedAt`: Optional ISO 8601 string. If supplied, the backend compares this against the Ticket's current database `updatedAt`.
+- **Concurrency Conflict Behavior (Section 6.1):**
+  If `expectedUpdatedAt` is provided and does not match `ticket.updatedAt.toISOString()`, the operation is aborted:
+  ```json
+  // HTTP 409 Conflict
+  {
+    "error": "Conflict: Ticket has been modified by another user. Please refresh and review latest changes.",
+    "details": [
+      "Stale record detected. Current updatedAt is 2026-05-12T10:15:30.000Z but expected was 2026-05-12T09:14:00.000Z."
+    ]
+  }
+  ```
+- **Validation Errors:**
+  - `422 Unprocessable Entity`: If `ticketOwnerId` references an inactive user (`isActive = false`) or a user with role `REQUESTER`:
+    ```json
+    {
+      "error": "Invalid ticket owner assignment.",
+      "details": [
+        "Ticket owner must be an active user with IT_STAFF or ADMINISTRATOR role."
+      ]
+    }
+    ```
+- **Response `200 OK`:**
+  ```json
+  {
+    "id": 12,
+    "ticketNumber": "TKT-2026-000234",
+    "summary": "Laptop battery drains quickly",
+    "currentStatus": "IN_PROGRESS",
+    "itPriority": "HIGH",
+    "ticketOwnerId": 2,
+    "ticketOwner": {
+      "id": 2,
+      "name": "Sarah Johnson",
+      "email": "staff.sarah@toktickit.com",
+      "role": "IT_STAFF"
+    },
+    "updatedAt": "2026-05-12T10:30:00.000Z"
+  }
+  ```
+
+---
+
+### 3.3. Update Ticket IT Priority (with Concurrency Check)
+- **Path:** `PATCH /api/staff/tickets/:id/priority`
+- **Description:** Updates the ticket's `itPriority` independently of the Requester's original `requestedPriority`. Enforces optimistic concurrency checking.
+- **Authorization:** `IT_STAFF`, `ADMINISTRATOR`. (Requesters receive `403 Forbidden`).
+- **Path Parameters:**
+  - `id` (integer, required): Target Ticket ID.
+- **Request Body:**
+  ```json
+  {
+    "itPriority": "URGENT",
+    "expectedUpdatedAt": "2026-05-12T09:14:00.000Z"
+  }
+  ```
+  *Field Requirements:*
+  - `itPriority`: Required enum (`LOW`, `MEDIUM`, `HIGH`, `URGENT`).
+  - `expectedUpdatedAt`: Optional ISO 8601 string. If supplied, compared against database `ticket.updatedAt`.
+- **Concurrency Conflict Behavior (Section 6.1):**
+  If `expectedUpdatedAt` does not match database `updatedAt`, responds with `HTTP 409 Conflict`.
+- **Validation Errors:**
+  - `422 Unprocessable Entity`: If `itPriority` is not a valid enum value:
+    ```json
+    {
+      "error": "Invalid IT Priority value.",
+      "details": [
+        "itPriority must be one of: LOW, MEDIUM, HIGH, URGENT."
+      ]
+    }
+    ```
+- **Response `200 OK`:**
+  ```json
+  {
+    "id": 12,
+    "ticketNumber": "TKT-2026-000234",
+    "summary": "Laptop battery drains quickly",
+    "requestedPriority": "MEDIUM",
+    "itPriority": "URGENT",
+    "currentStatus": "IN_PROGRESS",
+    "ticketOwnerId": 2,
+    "updatedAt": "2026-05-12T10:35:00.000Z"
+  }
+  ```
+
+---
+
 ## 4. Role-Appropriate Dashboard Endpoints
 
 ### 4.1. Requester Dashboard

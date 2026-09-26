@@ -229,9 +229,9 @@ All screens, components, and interactive states integrate seamlessly into a sing
 | Welcome, Jennifer!                                                                                |
 | Here's the latest on your requests.                                                               |
 +---------------------------------------------------------------------------------------------------+
-| My Open Tickets  | Waiting for Me    | In Progress       | Resolved          | Closed             |
-| 3                | 1 [Attention!]    | 2                 | 5                 | 12                 |
-| [ View all ]     | [ View all ]      | [ View all ]      | [ View all ]      | [ View all ]       |
+| My Open Tickets  | In Progress       | Resolved          | Closed                                 |
+| 3                | 2                 | 5                 | 12                                     |
+| [ View all ]     | [ View all ]      | [ View all ]      | [ View all ]                           |
 +---------------------------------------------------------------------------------------------------+
 | My Recent Tickets                           [ View all ] | Quick Actions                          |
 | -------------------------------------------------------- | -------------------------------------- |
@@ -241,8 +241,8 @@ All screens, components, and interactive states integrate seamlessly into a sing
 | TKT-2026-000222                       [ Open ]           | [ 📄 ] View My Tickets                 |
 | Request software access               May 11, 02:30 PM   |        Track existing requests         |
 |                                                          |                                        |
-| TKT-2026-000213                       [ In Progress ]    |                                        |
-| Need new monitor                      May 9, 11:05 AM    |                                        |
+| TKT-2026-000215           [ Waiting for Requester ]      |                                        |
+| Need confirmation on VPN ID           May 10, 04:10 PM   |                                        |
 |                                                          |                                        |
 | TKT-2026-000205                       [ Resolved ]       |                                        |
 | Email not arriving                    May 7, 09:20 PM    |                                        |
@@ -253,22 +253,21 @@ All screens, components, and interactive states integrate seamlessly into a sing
 ```
 
 ### 6.2. Requester Metric Cards & Drill-Down
+*(Strictly aligns with the 4-card layout on Handout Page 6 / Section 8.2)*
 1. **My Open Tickets:**
    - Count: Owned tickets with active statuses ($\in \{\text{NEW}, \text{OPEN}, \text{IN\_PROGRESS}, \text{WAITING\_FOR\_REQUESTER}, \text{REOPENED}\}$).
    - "View all" links to `/tickets?filter=open`.
-2. **Waiting for Me (Attention Required):**
-   - Count: Owned tickets where `currentStatus = 'WAITING_FOR_REQUESTER'`.
-   - Renders with prominent amber accent badge (`#D97706` text, `#FEF3C7` background) indicating that IT Staff is waiting for the requester's response.
-   - "View all" links to `/tickets?status=WAITING_FOR_REQUESTER`.
-3. **In Progress:**
+2. **In Progress:**
    - Count: Owned tickets with status $= \text{IN_PROGRESS}$.
    - "View all" links to `/tickets?status=IN_PROGRESS`.
-4. **Resolved:**
+3. **Resolved:**
    - Count: Owned tickets with status $= \text{RESOLVED}$.
    - "View all" links to `/tickets?status=RESOLVED`.
-5. **Closed:**
+4. **Closed:**
    - Count: Owned tickets with status $= \text{CLOSED}$.
    - "View all" links to `/tickets?status=CLOSED`.
+
+**Attention-Required Handling:** To preserve Handout Section 4.6 expectations (*"Tickets waiting for the Requester"*) without breaking the 4-card wireframe layout, tickets with `currentStatus = 'WAITING_FOR_REQUESTER'` are highlighted in the "My Recent Tickets" list with an amber `[ Waiting for Requester ]` badge and an attention callout icon, providing immediate visibility to items requiring customer action.
 
 ### 6.3. Requester Quick Actions
 - `+ Create Ticket` $\rightarrow$ links to `/tickets/new`.
@@ -317,12 +316,13 @@ Actions Taken is rendered as a dedicated major panel on Ticket Detail (`/queue/:
   - **Description `<textarea>`:** Required ($\ge 3$ characters), placeholder: "Describe the concrete technical step taken...".
   - **Result `<textarea>`:** Required ($\ge 3$ characters), placeholder: "Describe the outcome or finding...".
   - **Follow-Up Required? `<input type="checkbox">`:** Checkbox labeled "Follow-up required?".
-  - **Follow-up Note `<textarea>`:** Conditionally revealed and required when Follow-Up Required is checked ($\ge 3$ characters). Includes inline helper: "Specify next steps or pending deliveries."
-  - **Attachment Notes `<input type="text">`:** Optional, placeholder: "e.g. diagnostic_log.txt or screenshot.png".
+  - **Follow-up Note `<textarea>`:** Conditionally revealed and required when Follow-Up Required is checked (minimum 3 characters, maximum 1,000 characters). The UI enforces `maxLength={1000}` with an accessible live character counter (`{count} / 1,000 characters`) directly below the input and an inline warning when nearing the ceiling, preventing accidental HTTP 422 rejections. Inline helper: "Specify next steps or pending deliveries (up to 1,000 characters)."
+  - **Attachment Notes `<input type="text">`:** Optional, placeholder: "e.g. diagnostic_log.txt or screenshot.png" (max 500 characters).
   - **Action Buttons:** "Save Action" (primary green, busy spinner when submitting) and "Cancel" (secondary button).
 
 #### 3. Edit Mode
 - Clicking "Edit" on an action card transforms that card into an editable form pre-populated with existing values.
+- Form inputs adhere to identical constraints as Create Mode (including `maxLength={1000}` and live character counter for `followUpNote`).
 - "Save Changes" updates the record via `PATCH /api/actions-taken/:actionId`.
 - "Cancel" restores the card to List Mode without saving.
 
@@ -389,19 +389,22 @@ Clicking "Keep My Drafts & Refresh" re-fetches the ticket data while keeping any
 
 ### 9.1. Desktop Viewport ($\ge 992\text{ px}$)
 - Header displays complete brand, horizontal navigation tabs, and user profile dropdown.
-- Dashboard KPI cards display in a balanced 5-column grid across both IT Staff (New, Open, In Progress, Waiting for Requester, My Assigned) and Requester dashboards (My Open, Waiting for Me [Attention Required], In Progress, Resolved, Closed).
-- Bottom dashboard area renders two side-by-side columns: 8/12 grid for "My Recent Tickets", 4/12 grid for "Quick Actions".
+- **Requester Dashboard Grid:** The 4 KPI cards render in a balanced single-row 4-column grid (`col-lg-3`, 25% width each).
+- **IT Staff Dashboard Grid:** The 5 KPI cards render in a responsive 5-column flex container or grid layout (`col-lg-2-4` or `flex: 1 1 0` with 12px gap).
+- Bottom dashboard area renders two side-by-side columns: 8/12 grid (`col-lg-8`) for "My Recent Tickets", 4/12 grid (`col-lg-4`) for "Quick Actions".
 - Actions Taken cards display full horizontal metadata (date, performer, badges) alongside action text.
 
 ### 9.2. Tablet Viewport ($768\text{ px} - 991\text{ px}$)
-- Dashboard KPI cards wrap into a 3-column / 2-column balanced grid.
-- Recent Tickets and Quick Actions stack vertically or adapt to condensed paddings.
-- Actions Taken form fields adapt comfortably to 2-column grid.
+- **Requester Dashboard Grid:** The 4 KPI cards adapt into a clean, symmetrical 2x2 grid (`col-md-6 mb-3`) preventing horizontal squishing or orphan cards.
+- **IT Staff Dashboard Grid:** The 5 KPI cards wrap into a 3-card top row and 2-card centered bottom row (`col-md-4 mb-3` and `col-md-6 mb-3`).
+- Recent Tickets and Quick Actions stack vertically (`col-12`) with full-width cards and tap-friendly touch targets.
+- Actions Taken form fields adapt comfortably to a 2-column grid (`col-md-6`).
 
 ### 9.3. Mobile Viewport ($< 768\text{ px}$)
 - Zero horizontal scrolling (`overflow-x: hidden`).
 - Navigation tabs collapse or wrap into accessible mobile menu.
-- Dashboard KPI cards stack in a 2-column or 1-column layout.
+- **Requester Dashboard Grid:** KPI cards render in a 2-column compact grid (`col-6 g-2 mb-2`) or stacked single-column (`col-12 mb-2`), ensuring clear typography and no clipped numbers.
+- **IT Staff Dashboard Grid:** KPI cards stack cleanly in a 2-column or 1-column layout.
 - "My Recent Tickets" list transforms into stacked cards with clear badge placement.
 - Actions Taken items render as stacked vertical cards.
 - All interactive touch targets (buttons, links, form inputs) measure $\ge 44\text{ px}$ in height.
