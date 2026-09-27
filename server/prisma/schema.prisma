@@ -48,6 +48,7 @@ model User {
   uploadedAttachments Attachment[]    @relation("UserAttachments")
   publicComments     PublicComment[]  @relation("UserPublicComments")
   internalNotes      InternalNote[]   @relation("UserInternalNotes")
+  performedActions   ActionTaken[]    @relation("UserPerformedActions")
 
   @@index([role, isActive])
   @@map("users")
@@ -99,6 +100,7 @@ model Ticket {
   attachments         Attachment[]
   publicComments      PublicComment[]
   internalNotes       InternalNote[]
+  actionsTaken        ActionTaken[]
 
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
@@ -161,4 +163,28 @@ model InternalNote {
 
   @@index([ticketId, createdAt])
   @@map("internal_notes")
+}
+
+model ActionTaken {
+  id                 Int       @id @default(autoincrement())
+  ticketId           Int
+  ticket             Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  actionDateTime     DateTime  @default(now())
+  description        String    @db.Text
+  result             String    @db.Text
+
+  performedByUserId  Int
+  performedBy        User      @relation("UserPerformedActions", fields: [performedByUserId], references: [id], onDelete: Restrict)
+
+  isFollowUpRequired Boolean   @default(false)
+  followUpNote       String?   @db.Text
+  attachmentNotes    String?   @db.Text
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([ticketId, actionDateTime])
+  @@index([performedByUserId])
+  @@map("actions_taken")
 }

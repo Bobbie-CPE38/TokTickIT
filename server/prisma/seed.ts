@@ -166,6 +166,7 @@ async function main() {
   const sarahId = usersMap.get("sarah.johnson@kmutt.ac.th")!;
   const staffMichaelId = usersMap.get("staff.michael@toktickit.com")!;
   const staffSarahId = usersMap.get("staff.sarah@toktickit.com")!;
+  const staffDavidId = usersMap.get("staff.david@toktickit.com")!;
 
   const sampleTickets = [
     // --- Jennifer Anderson's Tickets (Preserving all Lab 2 tickets for zero test regression) ---
@@ -544,8 +545,169 @@ async function main() {
     });
   }
 
+  // 6. Seed Sample Actions Taken (Lab 4 Sprint Engineering Specification §7.4 & §8)
+  const allTickets = await prisma.ticket.findMany({
+    select: { id: true, ticketNumber: true },
+  });
+  const ticketMap = new Map<string, number>();
+  for (const t of allTickets) {
+    ticketMap.set(t.ticketNumber, t.id);
+  }
+
+  const sampleActionsTaken = [
+    // Ticket TKT-2026-000102 (1 Action Taken with follow-up note)
+    {
+      ticketNumber: "TKT-2026-000102",
+      actionDateTime: new Date("2026-08-26T10:00:00.000Z"),
+      description: "Checked user VPN gateway account permissions and active session locks.",
+      result: "No account lockouts found on RADIUS server. Requested user test with mobile hotspot to isolate ISP issue.",
+      performedByUserId: staffMichaelId,
+      isFollowUpRequired: true,
+      followUpNote: "Awaiting test result from requester on mobile hotspot.",
+      attachmentNotes: "Radius_log_20260826.txt",
+    },
+    // Ticket TKT-2026-000103 (Multiple Actions Taken performed by different IT Staff: Sarah and Michael)
+    {
+      ticketNumber: "TKT-2026-000103",
+      actionDateTime: new Date("2026-08-26T12:00:00.000Z"),
+      description: "Inspected local Outlook profile and mailbox quota on Exchange.",
+      result: "Mailbox at 42% capacity. Corrupted OST local cache detected.",
+      performedByUserId: staffSarahId,
+      isFollowUpRequired: true,
+      followUpNote: "Need second staff technician to rebuild local mail database profile.",
+      attachmentNotes: null,
+    },
+    {
+      ticketNumber: "TKT-2026-000103",
+      actionDateTime: new Date("2026-08-26T14:30:00.000Z"),
+      description: "Re-authenticated Exchange mail profile and rebuilt local cache database.",
+      result: "All folders synced successfully. Verified sending and receiving test emails.",
+      performedByUserId: staffMichaelId,
+      isFollowUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: "Outlook_sync_verification.png",
+    },
+    // Ticket TKT-2026-000104 (1 Action Taken)
+    {
+      ticketNumber: "TKT-2026-000104",
+      actionDateTime: new Date("2026-08-27T11:00:00.000Z"),
+      description: "Provisioned TA security group role in LDAP directory and synced with Grade Submission portal.",
+      result: "Role synchronized. Verified permissions in administrative directory console.",
+      performedByUserId: staffMichaelId,
+      isFollowUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: null,
+    },
+    // Ticket TKT-2026-000106 (1 Action Taken)
+    {
+      ticketNumber: "TKT-2026-000106",
+      actionDateTime: new Date("2026-08-28T09:30:00.000Z"),
+      description: "Reproduced PDF upload error on test rubric file. Inspected reverse proxy timeout logs.",
+      result: "Nginx upstream timeout at 60s when parsing embedded fonts in PDF rubric.",
+      performedByUserId: staffMichaelId,
+      isFollowUpRequired: true,
+      followUpNote: "Patch Nginx client_max_body_size and proxy_read_timeout in staging deployment.",
+      attachmentNotes: "nginx_upstream_timeout.log",
+    },
+    // Ticket TKT-2026-000107 (1 Action Taken)
+    {
+      ticketNumber: "TKT-2026-000107",
+      actionDateTime: new Date("2026-08-28T14:00:00.000Z"),
+      description: "Pushed updated 802.1X certificate to MDM-enrolled profiles and verified with test device.",
+      result: "EAP-TLS handshake succeeded. Certificate validity extended through 2027.",
+      performedByUserId: staffSarahId,
+      isFollowUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: null,
+    },
+    // Ticket TKT-2026-000401 (1 Action Taken - WAITING_FOR_REQUESTER)
+    {
+      ticketNumber: "TKT-2026-000401",
+      actionDateTime: new Date("2026-09-01T10:00:00.000Z"),
+      description: "Contacted requester via internal messaging requesting specific database schema and environment.",
+      result: "Message delivered. Ticket placed into WAITING_FOR_REQUESTER pending schema specifications.",
+      performedByUserId: staffMichaelId,
+      isFollowUpRequired: true,
+      followUpNote: "Follow up if requester does not reply within 48 hours.",
+      attachmentNotes: null,
+    },
+    // Ticket TKT-2026-000402 (Multiple Actions Taken across midnight 00:00:00 UTC trend boundary)
+    // Pre-midnight 00:00:00 UTC (2026-09-01T22:30:00.000Z)
+    {
+      ticketNumber: "TKT-2026-000402",
+      actionDateTime: new Date("2026-09-01T22:30:00.000Z"),
+      description: "Conducted initial projector voltage inspection in room CB2-301.",
+      result: "Ballast power supply fluctuating under load. Requires new ballast unit.",
+      performedByUserId: staffMichaelId,
+      isFollowUpRequired: true,
+      followUpNote: "Order replacement ballast from AV vendor.",
+      attachmentNotes: null,
+    },
+    // Post-midnight 00:00:00 UTC (2026-09-02T02:15:00.000Z)
+    {
+      ticketNumber: "TKT-2026-000402",
+      actionDateTime: new Date("2026-09-02T02:15:00.000Z"),
+      description: "Swapped projector power ballast with spare unit from AV storage.",
+      result: "Ballast replaced. Voltage steady at 220V. Flicker completely eliminated.",
+      performedByUserId: staffDavidId,
+      isFollowUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: "ballast_voltage_meter.png",
+    },
+    // Ticket TKT-2026-000403 (1 Action Taken - CANCELLED)
+    {
+      ticketNumber: "TKT-2026-000403",
+      actionDateTime: new Date("2026-09-02T11:30:00.000Z"),
+      description: "Verified duplicate submission against ticket TKT-2026-000201.",
+      result: "Confirmed duplicate. Cancelled request per requester note.",
+      performedByUserId: staffSarahId,
+      isFollowUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: null,
+    },
+  ];
+
+  for (const a of sampleActionsTaken) {
+    const ticketId = ticketMap.get(a.ticketNumber);
+    if (!ticketId) continue;
+
+    const existing = await prisma.actionTaken.findFirst({
+      where: {
+        ticketId,
+        actionDateTime: a.actionDateTime,
+      },
+    });
+
+    if (existing) {
+      await prisma.actionTaken.update({
+        where: { id: existing.id },
+        data: {
+          description: a.description,
+          result: a.result,
+          performedByUserId: a.performedByUserId,
+          isFollowUpRequired: a.isFollowUpRequired,
+          followUpNote: a.followUpNote,
+          attachmentNotes: a.attachmentNotes,
+        },
+      });
+    } else {
+      await prisma.actionTaken.create({
+        data: {
+          ticketId,
+          actionDateTime: a.actionDateTime,
+          description: a.description,
+          result: a.result,
+          performedByUserId: a.performedByUserId,
+          isFollowUpRequired: a.isFollowUpRequired,
+          followUpNote: a.followUpNote,
+          attachmentNotes: a.attachmentNotes,
+        },
+      });
+    }
+  }
+
   console.log(
-    `Successfully seeded categories, systems, users (${usersToSeed.length}), and sample tickets (${sampleTickets.length}).`
+    `Successfully seeded categories, systems, users (${usersToSeed.length}), sample tickets (${sampleTickets.length}), and actions taken (${sampleActionsTaken.length}).`
   );
 }
 
