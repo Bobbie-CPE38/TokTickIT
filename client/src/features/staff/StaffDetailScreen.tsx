@@ -4,6 +4,7 @@ import { useRouter } from "../../core/router/RouterContext.js";
 import * as api from "../../api.js";
 import { PriorityBadge } from "../../components/common/PriorityBadge.js";
 import { AttachmentList } from "../attachments/AttachmentList.js";
+import { ActionsTakenSection } from "../actions-taken/components/ActionsTakenSection.js";
 
 interface StaffDetailScreenProps {
   ticketId?: number;
@@ -548,6 +549,13 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
           )}
         </div>
       </div>
+
+      {/* Actions Taken Section */}
+      <ActionsTakenSection
+        ticketId={ticket.id}
+        readOnly={false}
+        initialActions={ticket.actionsTaken}
+      />
 
       {/* Tabs Navigation: Public Comments, Internal Notes, Attachments */}
       <div className="card shadow-sm border-0 mb-4" style={{ borderRadius: "8px" }}>

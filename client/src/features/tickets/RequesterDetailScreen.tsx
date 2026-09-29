@@ -13,6 +13,7 @@ import {
 import { AttachmentList as AttachmentSection } from "../attachments/AttachmentList.js";
 import { StatusBadge } from "../../components/common/StatusBadge.js";
 import { PriorityBadge } from "../../components/common/PriorityBadge.js";
+import { ActionsTakenSection } from "../actions-taken/components/ActionsTakenSection.js";
 
 export interface RequesterTicketDetailProps {
   ticketId: number;
@@ -453,7 +454,9 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
                   borderRadius: "6px",
                 }}
               >
-                {ticket.ticketOwner || "Unassigned"}
+                {typeof ticket.ticketOwner === "object" && ticket.ticketOwner !== null
+                  ? (ticket.ticketOwner as any).name
+                  : ticket.ticketOwner || "Unassigned"}
               </div>
             </div>
 
@@ -519,6 +522,13 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
               {ticket.resolutionSummary || "No resolution summary available yet."}
             </div>
           </div>
+
+          {/* Actions Taken Section (Read-Only for Requester) */}
+          <ActionsTakenSection
+            ticketId={ticket.id}
+            readOnly={true}
+            initialActions={ticket.actionsTaken}
+          />
 
           {/* Tabs for Public Comments and Attachments */}
           <div className="mt-4 pt-3 border-top">

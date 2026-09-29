@@ -1,3 +1,5 @@
+import { ActionTaken } from "./features/actions-taken/types.js";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 export class ApiError extends Error {
@@ -415,6 +417,7 @@ export interface TicketDetail {
   relatedSystemId: number;
   relatedSystem: { id: number; name: string };
   attachments: Attachment[];
+  actionsTaken?: ActionTaken[];
   createdAt: string;
   updatedAt: string;
 }
@@ -737,6 +740,7 @@ export interface StaffTicketDetail {
   attachments: Attachment[];
   publicComments: PublicComment[];
   internalNotes: InternalNote[];
+  actionsTaken?: ActionTaken[];
   createdAt: string;
   updatedAt: string;
 }
@@ -1048,5 +1052,13 @@ export async function resetUserInitialPassword(
   return res.json();
 }
 
-
-
+// ---------------------------------------------------------------------------
+// Actions Taken API Functions (Lab 4)
+// ---------------------------------------------------------------------------
+export * from "./features/actions-taken/types.js";
+export {
+  fetchActionsTaken,
+  fetchActionTakenById,
+  createActionTaken,
+  updateActionTaken,
+} from "./features/actions-taken/api.js";
