@@ -9,6 +9,7 @@ import { attachmentsRouter } from "./features/attachments/attachments.routes.js"
 import { commentsNotesRouter } from "./features/comments-notes/comments-notes.routes.js";
 import { staffRouter } from "./features/staff/staff.routes.js";
 import { usersRouter } from "./features/users/users.routes.js";
+import { actionsTakenRouter } from "./features/actions-taken/actions-taken.routes.js";
 
 export const app = express();
 
@@ -24,6 +25,7 @@ app.use("/api", attachmentsRouter);
 app.use("/api", commentsNotesRouter);
 app.use("/api/staff", staffRouter);
 app.use("/api/admin/users", usersRouter);
+app.use("/api", actionsTakenRouter);
 
 // Centralized error handling middleware
 app.use(errorHandler);
