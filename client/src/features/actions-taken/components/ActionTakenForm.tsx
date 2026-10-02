@@ -267,7 +267,7 @@ export const ActionTakenForm: React.FC<ActionTakenFormProps> = ({
                     fontSize: "0.75rem",
                   }}
                 >
-                  {followUpNote.length} / 1,000 characters
+                  {followUpNote.length} / 1000 characters
                 </span>
               </div>
               <textarea
