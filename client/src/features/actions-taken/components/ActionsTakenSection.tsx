@@ -9,6 +9,7 @@ export interface ActionsTakenSectionProps {
   readOnly?: boolean;
   initialActions?: ActionTaken[];
   onActionsChange?: (actions: ActionTaken[]) => void;
+  embedded?: boolean;
 }
 
 export const ActionsTakenSection: React.FC<ActionsTakenSectionProps> = ({
@@ -16,6 +17,7 @@ export const ActionsTakenSection: React.FC<ActionsTakenSectionProps> = ({
   readOnly = false,
   initialActions,
   onActionsChange,
+  embedded = false,
 }) => {
   const [actions, setActions] = useState<ActionTaken[]>(initialActions || []);
   const [loading, setLoading] = useState<boolean>(!initialActions);
@@ -79,14 +81,10 @@ export const ActionsTakenSection: React.FC<ActionsTakenSectionProps> = ({
     setEditingActionId(null);
   };
 
-  return (
-    <div
-      className="card shadow-sm border-0 mb-4"
-      style={{ borderRadius: "8px", backgroundColor: "#FFFFFF" }}
-    >
-      {/* Panel Header */}
-      <div className="card-header bg-white border-bottom py-3 px-3 px-md-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <h4 className="mb-0 fw-semibold" style={{ color: "#1C2D27", fontSize: "1.15rem" }}>
+  const content = (
+    <>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+        <h4 className="mb-0 fw-semibold" style={{ color: "#1C2D27", fontSize: "1.1rem" }}>
           Actions Taken ({actions.length})
         </h4>
 
@@ -110,76 +108,89 @@ export const ActionsTakenSection: React.FC<ActionsTakenSectionProps> = ({
         )}
       </div>
 
-      <div className="card-body p-3 p-md-4">
-        {error && (
-          <div
-            className="alert alert-danger py-2 px-3 small mb-3"
-            role="alert"
-            style={{ backgroundColor: "#FEE2E2", borderColor: "#EF4444", color: "#991B1B" }}
-          >
-            {error}
-          </div>
-        )}
+      {error && (
+        <div
+          className="alert alert-danger py-2 px-3 small mb-3"
+          role="alert"
+          style={{ backgroundColor: "#FEE2E2", borderColor: "#EF4444", color: "#991B1B" }}
+        >
+          {error}
+        </div>
+      )}
 
-        {/* Create Mode Form */}
-        {isCreateMode && (
-          <ActionTakenForm
-            ticketId={ticketId}
-            onSuccess={handleCreateSuccess}
-            onCancel={() => setIsCreateMode(false)}
-          />
-        )}
+      {/* Create Mode Form */}
+      {isCreateMode && (
+        <ActionTakenForm
+          ticketId={ticketId}
+          onSuccess={handleCreateSuccess}
+          onCancel={() => setIsCreateMode(false)}
+        />
+      )}
 
-        {/* Loading state */}
-        {loading && actions.length === 0 ? (
-          <div className="text-center py-4 text-muted">
-            <span className="spinner-border spinner-border-sm me-2" role="status" />
-            Loading actions taken...
-          </div>
-        ) : actions.length === 0 && !isCreateMode ? (
-          /* Empty State */
-          <div
-            className="text-center py-4 px-3 rounded border border-dashed"
-            style={{
-              borderColor: "#CBD5E1",
-              backgroundColor: "#F8FAF9",
-              color: "#52665D",
-            }}
-          >
-            <p className="mb-0 small fw-medium">
-              No actions have been recorded for this ticket yet.
-            </p>
-          </div>
-        ) : (
-          /* List Mode */
-          <div className="actions-taken-list">
-            {actions.map((action) => {
-              if (editingActionId === action.id) {
-                return (
-                  <ActionTakenForm
-                    key={action.id}
-                    ticketId={ticketId}
-                    action={action}
-                    onSuccess={handleUpdateSuccess}
-                    onCancel={() => setEditingActionId(null)}
-                  />
-                );
-              }
-
+      {/* Loading state */}
+      {loading && actions.length === 0 ? (
+        <div className="text-center py-4 text-muted">
+          <span className="spinner-border spinner-border-sm me-2" role="status" />
+          Loading actions taken...
+        </div>
+      ) : actions.length === 0 && !isCreateMode ? (
+        /* Empty State */
+        <div
+          className="text-center py-4 px-3 rounded border border-dashed"
+          style={{
+            borderColor: "#CBD5E1",
+            backgroundColor: "#F8FAF9",
+            color: "#52665D",
+          }}
+        >
+          <p className="mb-0 small fw-medium">
+            No actions have been recorded for this ticket yet.
+          </p>
+        </div>
+      ) : (
+        /* List Mode */
+        <div className="actions-taken-list">
+          {actions.map((action) => {
+            if (editingActionId === action.id) {
               return (
-                <ActionTakenCard
+                <ActionTakenForm
                   key={action.id}
+                  ticketId={ticketId}
                   action={action}
-                  readOnly={readOnly}
-                  onEdit={() => {
-                    setEditingActionId(action.id);
-                    setIsCreateMode(false);
-                  }}
+                  onSuccess={handleUpdateSuccess}
+                  onCancel={() => setEditingActionId(null)}
                 />
               );
-            })}
-          </div>
-        )}
+            }
+
+            return (
+              <ActionTakenCard
+                key={action.id}
+                action={action}
+                readOnly={readOnly}
+                onEdit={() => {
+                  setEditingActionId(action.id);
+                  setIsCreateMode(false);
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="actions-taken-section">{content}</div>;
+  }
+
+  return (
+    <div
+      className="card shadow-sm border-0 mb-4"
+      style={{ borderRadius: "8px", backgroundColor: "#FFFFFF" }}
+    >
+      <div className="card-body p-3 p-md-4">
+        {content}
       </div>
     </div>
   );

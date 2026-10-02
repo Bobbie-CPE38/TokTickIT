@@ -9,6 +9,7 @@ import { ActionsTakenSection } from "../actions-taken/components/ActionsTakenSec
 interface StaffDetailScreenProps {
   ticketId?: number;
   onBack?: () => void;
+  defaultTab?: "comments" | "notes" | "attachments" | "actions";
 }
 
 const PERMITTED_TRANSITIONS: Record<string, string[]> = {
@@ -22,7 +23,11 @@ const PERMITTED_TRANSITIONS: Record<string, string[]> = {
   CANCELLED: [],
 };
 
-export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, onBack }) => {
+export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
+  ticketId,
+  onBack,
+  defaultTab = "comments",
+}) => {
   let router: ReturnType<typeof useRouter> | null = null;
   try {
     router = useRouter();
@@ -45,8 +50,11 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
   const [updatingPriority, setUpdatingPriority] = useState<boolean>(false);
   const [updatingStatus, setUpdatingStatus] = useState<boolean>(false);
 
-  // Tabs: comments, notes, attachments
-  const [activeTab, setActiveTab] = useState<"comments" | "notes" | "attachments">("comments");
+  // Tabs: comments, notes, attachments, actions
+  const [activeTab, setActiveTab] = useState<"comments" | "notes" | "attachments" | "actions">(
+    defaultTab
+  );
+  const [actionsCount, setActionsCount] = useState<number>(0);
 
   // Public comments state
   const [comments, setComments] = useState<api.PublicComment[]>([]);
@@ -78,14 +86,23 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
     setLoading(true);
     setError(null);
     try {
-      const [ticketData, assigneesData] = await Promise.all([
+      const [ticketData, assigneesData, actionsData] = await Promise.all([
         api.fetchStaffTicketDetail(ticketId),
         api.fetchStaffAssignees().catch(() => []),
+        api.fetchActionsTaken(ticketId).catch(() => []),
       ]);
-      setTicket(ticketData);
+      const initialActions =
+        actionsData && actionsData.length > 0
+          ? actionsData
+          : ticketData.actionsTaken || [];
+      setTicket({
+        ...ticketData,
+        actionsTaken: initialActions,
+      });
       setComments(ticketData.publicComments || []);
       setNotes(ticketData.internalNotes || []);
       setAssignees(assigneesData);
+      setActionsCount(initialActions.length);
     } catch (err: any) {
       setError(err.message || "Failed to load ticket detail.");
     } finally {
@@ -550,14 +567,7 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
         </div>
       </div>
 
-      {/* Actions Taken Section */}
-      <ActionsTakenSection
-        ticketId={ticket.id}
-        readOnly={false}
-        initialActions={ticket.actionsTaken}
-      />
-
-      {/* Tabs Navigation: Public Comments, Internal Notes, Attachments */}
+      {/* Tabs Navigation: Public Comments, Internal Notes, Attachments, Actions Taken */}
       <div className="card shadow-sm border-0 mb-4" style={{ borderRadius: "8px" }}>
         <div className="card-header bg-white border-bottom p-0">
           <ul className="nav nav-tabs border-0 px-3 pt-2" role="tablist">
@@ -604,6 +614,21 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                 onClick={() => setActiveTab("attachments")}
               >
                 Attachments ({ticket.attachments.filter((a) => !a.isRemoved).length})
+              </button>
+            </li>
+            <li className="nav-item" role="presentation">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "actions"}
+                className={`nav-link border-0 fw-semibold ${activeTab === "actions" ? "active" : "text-muted"}`}
+                style={{
+                  color: activeTab === "actions" ? "#006B3C" : undefined,
+                  borderBottom: activeTab === "actions" ? "3px solid #006B3C" : "none",
+                }}
+                onClick={() => setActiveTab("actions")}
+              >
+                Actions Taken ({actionsCount})
               </button>
             </li>
           </ul>
@@ -772,6 +797,22 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                 attachments={ticket.attachments}
                 onAttachmentsChange={(updated) => {
                   setTicket((prev) => (prev ? { ...prev, attachments: updated } : null));
+                }}
+              />
+            </div>
+          )}
+
+          {/* TAB 4: Actions Taken */}
+          {activeTab === "actions" && (
+            <div>
+              <ActionsTakenSection
+                ticketId={ticket.id}
+                readOnly={false}
+                initialActions={ticket.actionsTaken}
+                embedded={true}
+                onActionsChange={(updated) => {
+                  setActionsCount(updated.length);
+                  setTicket((prev) => (prev ? { ...prev, actionsTaken: updated } : null));
                 }}
               />
             </div>

@@ -9,6 +9,7 @@ import {
   indicateTicketResolved,
   fetchPublicComments,
   createPublicComment,
+  fetchActionsTaken,
 } from "../../api.js";
 import { AttachmentList as AttachmentSection } from "../attachments/AttachmentList.js";
 import { StatusBadge } from "../../components/common/StatusBadge.js";
@@ -18,7 +19,7 @@ import { ActionsTakenSection } from "../actions-taken/components/ActionsTakenSec
 export interface RequesterTicketDetailProps {
   ticketId: number;
   onBack: () => void;
-  defaultTab?: "comments" | "attachments";
+  defaultTab?: "comments" | "attachments" | "actions";
 }
 
 export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
@@ -44,7 +45,8 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"comments" | "attachments">(defaultTab);
+  const [activeTab, setActiveTab] = useState<"comments" | "attachments" | "actions">(defaultTab);
+  const [actionsCount, setActionsCount] = useState<number>(0);
   const [comments, setComments] = useState<PublicComment[]>([]);
   const [commentContent, setCommentContent] = useState<string>("");
   const [postingComment, setPostingComment] = useState<boolean>(false);
@@ -58,8 +60,16 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchTicketDetail(ticketId, activeUser?.id);
-      setTicket(data);
+      const [data, actionsData] = await Promise.all([
+        fetchTicketDetail(ticketId, activeUser?.id),
+        fetchActionsTaken(ticketId).catch(() => []),
+      ]);
+      const initialActions =
+        actionsData && actionsData.length > 0
+          ? actionsData
+          : data.actionsTaken || [];
+      setTicket({ ...data, actionsTaken: initialActions });
+      setActionsCount(initialActions.length);
       try {
         const commentData = await fetchPublicComments(ticketId, activeUser?.id);
         setComments(commentData);
@@ -523,14 +533,7 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
             </div>
           </div>
 
-          {/* Actions Taken Section (Read-Only for Requester) */}
-          <ActionsTakenSection
-            ticketId={ticket.id}
-            readOnly={true}
-            initialActions={ticket.actionsTaken}
-          />
-
-          {/* Tabs for Public Comments and Attachments */}
+          {/* Tabs for Public Comments, Attachments, and Actions Taken */}
           <div className="mt-4 pt-3 border-top">
             <ul className="nav nav-tabs border-bottom mb-4">
               <li className="nav-item">
@@ -563,6 +566,22 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
                   onClick={() => setActiveTab("attachments")}
                 >
                   Attachments ({ticket.attachments ? ticket.attachments.filter((a) => !a.isRemoved).length : 0})
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  type="button"
+                  className={`nav-link fw-semibold px-3 py-2 ${
+                    activeTab === "actions" ? "active text-success border-success" : "text-muted"
+                  }`}
+                  style={
+                    activeTab === "actions"
+                      ? { color: "#006B3C", borderBottom: "2px solid #006B3C" }
+                      : {}
+                  }
+                  onClick={() => setActiveTab("actions")}
+                >
+                  Actions Taken ({actionsCount})
                 </button>
               </li>
             </ul>
@@ -692,6 +711,19 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
                   )}
                 </div>
               </div>
+            )}
+
+            {activeTab === "actions" && (
+              <ActionsTakenSection
+                ticketId={ticket.id}
+                readOnly={true}
+                initialActions={ticket.actionsTaken}
+                embedded={true}
+                onActionsChange={(updated) => {
+                  setActionsCount(updated.length);
+                  setTicket((prev) => (prev ? { ...prev, actionsTaken: updated } : null));
+                }}
+              />
             )}
           </div>
         </div>

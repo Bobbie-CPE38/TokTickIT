@@ -160,10 +160,20 @@ describe("Lab 4 Actions Taken UI Component Tests (UI-06, UI-07, UI-08, UI-12)", 
   it("UI-06: Staff Ticket Detail renders Actions Taken list mode and toggles create mode form on clicking '+ Record Action Taken'", async () => {
     renderWithStaffContext(<StaffDetailScreen ticketId={12} />);
 
-    // Wait for Staff Detail and Actions Taken to render
+    // Wait for Staff Detail and Actions Taken tab to render
     await waitFor(() => {
-      expect(screen.getByText(/Actions Taken/i)).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Actions Taken/i })).toBeInTheDocument();
     });
+
+    // Verify tab position: Actions Taken is to the right of Attachments
+    const tabs = screen.getAllByRole("tab");
+    const tabNames = tabs.map((t) => t.textContent);
+    const attachmentsIdx = tabNames.findIndex((n) => n?.includes("Attachments"));
+    const actionsIdx = tabNames.findIndex((n) => n?.includes("Actions Taken"));
+    expect(actionsIdx).toBeGreaterThan(attachmentsIdx);
+
+    // Click the Actions Taken tab
+    fireEvent.click(screen.getByRole("tab", { name: /Actions Taken/i }));
 
     // Check that existing action cards/items are rendered in list mode
     expect(
@@ -282,10 +292,22 @@ describe("Lab 4 Actions Taken UI Component Tests (UI-06, UI-07, UI-08, UI-12)", 
       <RequesterDetailScreen ticketId={12} onBack={vi.fn()} />
     );
 
-    // Wait for Requester Detail and Actions Taken to render
+    // Wait for Requester Detail and Actions Taken tab to render
     await waitFor(() => {
-      expect(screen.getByText(/Actions Taken/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Actions Taken/i })).toBeInTheDocument();
     });
+
+    // Verify tab position: Actions Taken is to the right of Attachments
+    const tabButtons = screen
+      .getAllByRole("button")
+      .filter((b) => b.classList.contains("nav-link"));
+    const tabLabels = tabButtons.map((b) => b.textContent);
+    const attachmentsIdx = tabLabels.findIndex((l) => l?.includes("Attachments"));
+    const actionsIdx = tabLabels.findIndex((l) => l?.includes("Actions Taken"));
+    expect(actionsIdx).toBeGreaterThan(attachmentsIdx);
+
+    // Click Actions Taken tab to activate it
+    fireEvent.click(screen.getByRole("button", { name: /Actions Taken/i }));
 
     // Verify action details are visible
     expect(
