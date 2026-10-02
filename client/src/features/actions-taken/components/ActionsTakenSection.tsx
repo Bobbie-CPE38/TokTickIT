@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { ActionTaken } from "../types.js";
 import { fetchActionsTaken } from "../api.js";
 import { ActionTakenCard } from "./ActionTakenCard.js";
@@ -20,11 +20,25 @@ export const ActionsTakenSection: React.FC<ActionsTakenSectionProps> = ({
   embedded = false,
 }) => {
   const [actions, setActions] = useState<ActionTaken[]>(initialActions || []);
-  const [loading, setLoading] = useState<boolean>(!initialActions);
+  const [loading, setLoading] = useState<boolean>(initialActions === undefined);
   const [error, setError] = useState<string | null>(null);
 
   const [isCreateMode, setIsCreateMode] = useState<boolean>(false);
   const [editingActionId, setEditingActionId] = useState<number | null>(null);
+
+  // Keep a mutable ref to onActionsChange to avoid callback dependency loops
+  const onActionsChangeRef = useRef(onActionsChange);
+  useEffect(() => {
+    onActionsChangeRef.current = onActionsChange;
+  }, [onActionsChange]);
+
+  // Sync actions if initialActions prop updates from parent
+  useEffect(() => {
+    if (initialActions !== undefined) {
+      setActions(initialActions);
+      setLoading(false);
+    }
+  }, [initialActions]);
 
   const loadActions = useCallback(async () => {
     if (!ticketId) return;
@@ -39,19 +53,22 @@ export const ActionsTakenSection: React.FC<ActionsTakenSectionProps> = ({
           new Date(b.actionDateTime || b.createdAt).getTime()
       );
       setActions(sorted);
-      if (onActionsChange) {
-        onActionsChange(sorted);
+      if (onActionsChangeRef.current) {
+        onActionsChangeRef.current(sorted);
       }
     } catch (err: any) {
       setError(err.message || "Failed to load actions taken.");
     } finally {
       setLoading(false);
     }
-  }, [ticketId, onActionsChange]);
+  }, [ticketId]);
 
+  // Only auto-fetch on mount if initialActions was not provided
   useEffect(() => {
-    loadActions();
-  }, [loadActions]);
+    if (initialActions === undefined && ticketId) {
+      loadActions();
+    }
+  }, [ticketId, initialActions, loadActions]);
 
   const handleCreateSuccess = (newAction: ActionTaken) => {
     setActions((prev) => {
@@ -60,7 +77,7 @@ export const ActionsTakenSection: React.FC<ActionsTakenSectionProps> = ({
           new Date(a.actionDateTime || a.createdAt).getTime() -
           new Date(b.actionDateTime || b.createdAt).getTime()
       );
-      if (onActionsChange) onActionsChange(updated);
+      if (onActionsChangeRef.current) onActionsChangeRef.current(updated);
       return updated;
     });
     setIsCreateMode(false);
@@ -75,7 +92,7 @@ export const ActionsTakenSection: React.FC<ActionsTakenSectionProps> = ({
             new Date(a.actionDateTime || a.createdAt).getTime() -
             new Date(b.actionDateTime || b.createdAt).getTime()
         );
-      if (onActionsChange) onActionsChange(updated);
+      if (onActionsChangeRef.current) onActionsChangeRef.current(updated);
       return updated;
     });
     setEditingActionId(null);

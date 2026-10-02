@@ -5,6 +5,7 @@ import {
   TicketStatus,
   TicketDetail,
   PublicComment,
+  ActionTaken,
   fetchTicketDetail,
   indicateTicketResolved,
   fetchPublicComments,
@@ -56,6 +57,11 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
   const [resolving, setResolving] = useState<boolean>(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
 
+  const handleActionsChange = useCallback((updated: ActionTaken[]) => {
+    setActionsCount(updated.length);
+    setTicket((prev) => (prev ? { ...prev, actionsTaken: updated } : null));
+  }, []);
+
   const loadTicket = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -65,7 +71,7 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
         fetchActionsTaken(ticketId).catch(() => []),
       ]);
       const initialActions =
-        actionsData && actionsData.length > 0
+        Array.isArray(actionsData)
           ? actionsData
           : data.actionsTaken || [];
       setTicket({ ...data, actionsTaken: initialActions });
@@ -719,10 +725,7 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
                 readOnly={true}
                 initialActions={ticket.actionsTaken}
                 embedded={true}
-                onActionsChange={(updated) => {
-                  setActionsCount(updated.length);
-                  setTicket((prev) => (prev ? { ...prev, actionsTaken: updated } : null));
-                }}
+                onActionsChange={handleActionsChange}
               />
             )}
           </div>

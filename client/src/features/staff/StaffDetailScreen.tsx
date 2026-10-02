@@ -81,6 +81,11 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
     }
   };
 
+  const handleActionsChange = useCallback((updated: api.ActionTaken[]) => {
+    setActionsCount(updated.length);
+    setTicket((prev) => (prev ? { ...prev, actionsTaken: updated } : null));
+  }, []);
+
   const loadTicketData = useCallback(async () => {
     if (!ticketId) return;
     setLoading(true);
@@ -92,7 +97,7 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
         api.fetchActionsTaken(ticketId).catch(() => []),
       ]);
       const initialActions =
-        actionsData && actionsData.length > 0
+        Array.isArray(actionsData)
           ? actionsData
           : ticketData.actionsTaken || [];
       setTicket({
@@ -810,10 +815,7 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
                 readOnly={false}
                 initialActions={ticket.actionsTaken}
                 embedded={true}
-                onActionsChange={(updated) => {
-                  setActionsCount(updated.length);
-                  setTicket((prev) => (prev ? { ...prev, actionsTaken: updated } : null));
-                }}
+                onActionsChange={handleActionsChange}
               />
             </div>
           )}
