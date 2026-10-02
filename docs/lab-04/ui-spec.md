@@ -316,7 +316,7 @@ Actions Taken is rendered as a dedicated major panel on Ticket Detail (`/queue/:
   - **Description `<textarea>`:** Required ($\ge 3$ characters), placeholder: "Describe the concrete technical step taken...".
   - **Result `<textarea>`:** Required ($\ge 3$ characters), placeholder: "Describe the outcome or finding...".
   - **Follow-Up Required? `<input type="checkbox">`:** Checkbox labeled "Follow-up required?".
-  - **Follow-up Note `<textarea>`:** Conditionally revealed and required when Follow-Up Required is checked (minimum 3 characters, maximum 1,000 characters). The UI enforces `maxLength={1000}` with an accessible live character counter (`{count} / 1,000 characters`) directly below the input and an inline warning when nearing the ceiling, preventing accidental HTTP 422 rejections. Inline helper: "Specify next steps or pending deliveries (up to 1,000 characters)."
+  - **Follow-up Note `<textarea>`:** Conditionally revealed and required when Follow-Up Required is checked (minimum 3 characters, maximum 1000 characters). The UI enforces `maxLength={1000}` with an accessible live character counter (`{count} / 1000 characters`) directly below the input and an inline warning when nearing the ceiling, preventing accidental HTTP 422 rejections. Inline helper: "Specify next steps or pending deliveries (up to 1000 characters)."
   - **Attachment Notes `<input type="text">`:** Optional, placeholder: "e.g. diagnostic_log.txt or screenshot.png" (max 500 characters).
   - **Action Buttons:** "Save Action" (primary green, busy spinner when submitting) and "Cancel" (secondary button).
 
