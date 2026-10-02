@@ -50,8 +50,9 @@ export const ActionTakenCard: React.FC<ActionTakenCardProps> = ({
               {formatDateTime(action.actionDateTime)}
             </span>
             <span className="text-muted small">&bull;</span>
-            <span className="text-muted small d-inline-flex align-items-center gap-1.5 flex-wrap">
-              Performed by: <strong className="text-dark">{performerName}</strong>
+            <span className="text-muted small d-inline-flex align-items-center flex-wrap">
+              <span>Performed by:&nbsp;</span>
+              <strong className="text-dark me-1">{performerName}</strong>
               <span
                 className="badge px-2 py-0.5 fw-medium"
                 style={{
