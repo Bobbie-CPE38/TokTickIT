@@ -165,7 +165,7 @@ export const ActionTakenForm: React.FC<ActionTakenFormProps> = ({
                 Action Description <span className="text-danger">*</span>
               </label>
               <span className="text-muted small" style={{ fontSize: "0.75rem" }}>
-                {description.length} / 2,000 characters
+                {description.length} / 2000 characters
               </span>
             </div>
             <textarea
@@ -196,7 +196,7 @@ export const ActionTakenForm: React.FC<ActionTakenFormProps> = ({
                 Result <span className="text-danger">*</span>
               </label>
               <span className="text-muted small" style={{ fontSize: "0.75rem" }}>
-                {result.length} / 2,000 characters
+                {result.length} / 2000 characters
               </span>
             </div>
             <textarea
@@ -280,7 +280,7 @@ export const ActionTakenForm: React.FC<ActionTakenFormProps> = ({
                   borderColor: followUpError ? "#EF4444" : "#D1D5DB",
                   fontSize: "0.9rem",
                 }}
-                placeholder="Specify next steps or pending deliveries (up to 1,000 characters)..."
+                placeholder="Specify next steps or pending deliveries (up to 1000 characters)..."
                 value={followUpNote}
                 maxLength={1000}
                 onChange={(e) => {
