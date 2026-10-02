@@ -14,6 +14,7 @@ export const ActionTakenCard: React.FC<ActionTakenCardProps> = ({
 }) => {
   const performerName =
     action.performedBy?.name || action.performer?.name || `Staff ID #${action.performedByUserId}`;
+  const performerRole = action.performedBy?.role || action.performer?.role;
 
   const formatDateTime = (dateStr: string) => {
     try {
@@ -49,8 +50,19 @@ export const ActionTakenCard: React.FC<ActionTakenCardProps> = ({
               {formatDateTime(action.actionDateTime)}
             </span>
             <span className="text-muted small">&bull;</span>
-            <span className="text-muted small">
+            <span className="text-muted small d-inline-flex align-items-center gap-1.5 flex-wrap">
               Performed by: <strong className="text-dark">{performerName}</strong>
+              <span
+                className="badge px-2 py-0.5 fw-medium"
+                style={{
+                  fontSize: "0.7rem",
+                  color: performerRole === "ADMINISTRATOR" ? "#6D28D9" : "#0B7A46",
+                  backgroundColor: performerRole === "ADMINISTRATOR" ? "#EDE9FE" : "#EAF6EF",
+                  border: `1px solid ${performerRole === "ADMINISTRATOR" ? "#DDD6FE" : "#A7F3D0"}`,
+                }}
+              >
+                {performerRole === "ADMINISTRATOR" ? "Administrator" : "IT Staff"}
+              </span>
             </span>
           </div>
 

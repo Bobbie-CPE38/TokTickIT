@@ -183,6 +183,7 @@ describe("Lab 4 Actions Taken UI Component Tests (UI-06, UI-07, UI-08, UI-12)", 
       screen.getByText("Verified AC power adapter output with multimeter.")
     ).toBeInTheDocument();
     expect(screen.getByText(/Sarah Johnson/i)).toBeInTheDocument();
+    expect(screen.getAllByText("IT Staff").length).toBeGreaterThan(0);
 
     // Verify "+ Record Action Taken" button is present
     const recordBtn = screen.getByRole("button", { name: /\+ Record Action Taken/i });
@@ -317,6 +318,7 @@ describe("Lab 4 Actions Taken UI Component Tests (UI-06, UI-07, UI-08, UI-12)", 
       screen.getByText("Cell #2 degraded below 40% capacity. Ordered replacement battery.")
     ).toBeInTheDocument();
     expect(screen.getByText(/Sarah Johnson/i)).toBeInTheDocument();
+    expect(screen.getAllByText("IT Staff").length).toBeGreaterThan(0);
     expect(screen.getByText(/Follow-Up Required/i)).toBeInTheDocument();
     expect(screen.getByText(/Action Complete/i)).toBeInTheDocument();
 
