@@ -73,6 +73,10 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
   const [modalSummary, setModalSummary] = useState<string>("");
   const [modalError, setModalError] = useState<string | null>(null);
 
+  // Concurrency conflict modal state
+  const [showConflictModal, setShowConflictModal] = useState<boolean>(false);
+  const [conflictDetails, setConflictDetails] = useState<string | null>(null);
+
   const handleBack = () => {
     if (onBack) {
       onBack();
@@ -97,7 +101,7 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
         api.fetchActionsTaken(ticketId).catch(() => []),
       ]);
       const initialActions =
-        Array.isArray(actionsData)
+        Array.isArray(actionsData) && actionsData.length > 0
           ? actionsData
           : ticketData.actionsTaken || [];
       setTicket({
@@ -127,20 +131,26 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
     setUpdatingOwner(true);
     setError(null);
     try {
-      const res = await api.updateTicketAssignment(ticketId, newOwnerId);
+      const res = await api.updateTicketAssignment(ticketId, newOwnerId, ticket?.updatedAt);
       setTicket((prev) =>
         prev
           ? {
               ...prev,
               ticketOwnerId: res.ticketOwnerId,
               ticketOwner: res.ticketOwner,
+              updatedAt: res.updatedAt,
             }
           : null
       );
       setSuccessMessage("Ticket ownership updated.");
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      setError(err.message || "Failed to update ticket owner.");
+      if (err?.status === 409 || err?.message?.includes("409") || err?.message?.includes("modified by another user")) {
+        setShowConflictModal(true);
+        setConflictDetails(err.message);
+      } else {
+        setError(err.message || "Failed to update ticket owner.");
+      }
     } finally {
       setUpdatingOwner(false);
     }
@@ -153,19 +163,25 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
     setUpdatingPriority(true);
     setError(null);
     try {
-      const res = await api.updateTicketPriority(ticketId, newPriority);
+      const res = await api.updateTicketPriority(ticketId, newPriority, ticket?.updatedAt);
       setTicket((prev) =>
         prev
           ? {
               ...prev,
               itPriority: res.itPriority,
+              updatedAt: res.updatedAt,
             }
           : null
       );
       setSuccessMessage("IT Priority updated.");
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      setError(err.message || "Failed to update IT Priority.");
+      if (err?.status === 409 || err?.message?.includes("409") || err?.message?.includes("modified by another user")) {
+        setShowConflictModal(true);
+        setConflictDetails(err.message);
+      } else {
+        setError(err.message || "Failed to update IT Priority.");
+      }
     } finally {
       setUpdatingPriority(false);
     }
@@ -192,13 +208,14 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
     setError(null);
     setModalError(null);
     try {
-      const res = await api.updateTicketStatus(ticketId, nextStatus, summary);
+      const res = await api.updateTicketStatus(ticketId, nextStatus, summary, ticket?.updatedAt);
       setTicket((prev) =>
         prev
           ? {
               ...prev,
               currentStatus: res.currentStatus,
               resolutionSummary: res.resolutionSummary !== undefined ? res.resolutionSummary : prev.resolutionSummary,
+              updatedAt: res.updatedAt,
             }
           : null
       );
@@ -208,7 +225,11 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
       setSuccessMessage(`Ticket status transitioned to ${nextStatus}.`);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      if (isFromModal || pendingStatus) {
+      if (err?.status === 409 || err?.message?.includes("409") || err?.message?.includes("modified by another user")) {
+        setPendingStatus(null);
+        setShowConflictModal(true);
+        setConflictDetails(err.message);
+      } else if (isFromModal || pendingStatus) {
         setModalError(err.message || "Failed to update ticket status.");
       } else {
         setError(err.message || "Failed to update ticket status.");
@@ -223,6 +244,10 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
     if (!pendingStatus) return;
 
     if (pendingStatus === "RESOLVED") {
+      if (actionsCount === 0) {
+        setModalError("At least one Action Taken must be recorded before resolution.");
+        return;
+      }
       const trimmed = modalSummary.trim();
       if (!trimmed || trimmed.length < 5) {
         setModalError("Resolution summary is required and must be at least 5 characters.");
@@ -854,24 +879,44 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
               <div className="modal-body">
                 {pendingStatus === "RESOLVED" && (
                   <div>
-                    <p className="text-muted small mb-3">
-                      Please enter a resolution summary describing the fix. This will be visible to the requester.
-                    </p>
-                    <label htmlFor="modal-resolution-summary" className="form-label fw-semibold text-dark">
-                      Resolution Summary * (min 5 characters):
-                    </label>
-                    <textarea
-                      id="modal-resolution-summary"
-                      aria-label="Resolution Summary"
-                      className="form-control"
-                      rows={3}
-                      placeholder="e.g. Replaced faulty hardware unit and verified normal operation..."
-                      value={modalSummary}
-                      onChange={(e) => {
-                        setModalSummary(e.target.value);
-                        if (modalError) setModalError(null);
-                      }}
-                    />
+                    {actionsCount === 0 ? (
+                      <div className="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+                        <span>⚠️</span>
+                        <div>
+                          <strong>Resolution Gate:</strong> At least one Action Taken must be recorded before this ticket can be resolved.
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-muted small mb-3">
+                          Please enter a resolution summary describing the fix. This will be visible to the requester.
+                        </p>
+                        <label htmlFor="modal-resolution-summary" className="form-label fw-semibold text-dark">
+                          Resolution Summary * (min 5 characters):
+                        </label>
+                        <textarea
+                          id="modal-resolution-summary"
+                          aria-label="Resolution Summary"
+                          className="form-control"
+                          rows={3}
+                          maxLength={1000}
+                          placeholder="e.g. Replaced faulty hardware unit and verified normal operation..."
+                          value={modalSummary}
+                          onChange={(e) => {
+                            setModalSummary(e.target.value);
+                            if (modalError) setModalError(null);
+                          }}
+                        />
+                        <div className="d-flex justify-content-between align-items-center mt-1">
+                          <span className="small text-muted">
+                            {modalSummary.length} / 1000 characters
+                          </span>
+                          {modalSummary.trim().length > 0 && modalSummary.trim().length < 5 && (
+                            <span className="small text-danger">Minimum 5 characters required</span>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -952,7 +997,11 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
                     backgroundColor: pendingStatus === "CANCELLED" ? "#DC2626" : "#006B3C",
                   }}
                   onClick={handleConfirmModal}
-                  disabled={updatingStatus}
+                  disabled={
+                    updatingStatus ||
+                    (pendingStatus === "RESOLVED" &&
+                      (actionsCount === 0 || modalSummary.trim().length < 5 || modalSummary.trim().length > 1000))
+                  }
                 >
                   {updatingStatus
                     ? "Updating..."
@@ -963,6 +1012,65 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
                     : pendingStatus === "REOPENED"
                     ? "Confirm Reopen"
                     : "Confirm Cancellation"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Optimistic Concurrency Conflict Dialog */}
+      {showConflictModal && (
+        <div
+          className="modal fade show d-block"
+          tabIndex={-1}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1060 }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow">
+              <div className="modal-header bg-warning bg-opacity-10 border-bottom border-warning">
+                <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                  <span>⚠️</span> Stale Record Detected
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label="Close"
+                  onClick={() => setShowConflictModal(false)}
+                />
+              </div>
+              <div className="modal-body">
+                <p className="text-dark mb-3">
+                  This ticket has been updated by another team member since you loaded the page.
+                  To prevent overwriting their work, please reload the ticket.
+                </p>
+                {conflictDetails && (
+                  <div className="small text-muted mb-2 font-monospace">
+                    {conflictDetails}
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={() => setShowConflictModal(false)}
+                >
+                  Dismiss
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm text-white"
+                  style={{ backgroundColor: "#006B3C" }}
+                  onClick={async () => {
+                    setShowConflictModal(false);
+                    setConflictDetails(null);
+                    await loadTicketData();
+                  }}
+                >
+                  Keep My Drafts & Refresh
                 </button>
               </div>
             </div>

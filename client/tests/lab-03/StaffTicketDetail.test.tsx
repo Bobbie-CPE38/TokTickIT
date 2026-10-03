@@ -56,6 +56,22 @@ const mockTicketDetail: any = {
       author: { id: 2, name: "Michael Brown", role: "IT_STAFF" },
     },
   ],
+  actionsTaken: [
+    {
+      id: 1,
+      ticketId: 101,
+      actionDateTime: "2026-05-13T10:00:00.000Z",
+      description: "Tested battery charging cells.",
+      result: "Cell degradation confirmed.",
+      performedByUserId: 2,
+      performedBy: { id: 2, name: "Michael Brown", email: "staff.michael@toktickit.com", role: "IT_STAFF" },
+      isFollowUpRequired: false,
+      followUpNote: null,
+      attachmentNotes: null,
+      createdAt: "2026-05-13T10:00:00.000Z",
+      updatedAt: "2026-05-13T10:00:00.000Z",
+    },
+  ],
   createdAt: "2026-05-13T09:14:00.000Z",
   updatedAt: "2026-05-13T10:15:00.000Z",
 };
@@ -87,6 +103,7 @@ describe("Lab 3 Staff Ticket Detail UI Tests (UI-06, UI-07, UI-08)", () => {
     vi.restoreAllMocks();
     vi.spyOn(api, "fetchStaffTicketDetail").mockResolvedValue(mockTicketDetail);
     vi.spyOn(api, "fetchStaffAssignees").mockResolvedValue(mockStaffAssignees);
+    vi.spyOn(api, "fetchActionsTaken").mockResolvedValue(mockTicketDetail.actionsTaken);
     vi.spyOn(api, "updateTicketAssignment").mockResolvedValue({
       ...mockTicketDetail,
       ticketOwnerId: 3,
@@ -145,7 +162,7 @@ describe("Lab 3 Staff Ticket Detail UI Tests (UI-06, UI-07, UI-08)", () => {
     // Change Owner
     fireEvent.change(ownerSelect, { target: { value: "3" } });
     await waitFor(() => {
-      expect(api.updateTicketAssignment).toHaveBeenCalledWith(101, 3);
+      expect(api.updateTicketAssignment).toHaveBeenCalledWith(101, 3, mockTicketDetail.updatedAt);
     });
 
     // Verify IT Priority Select
@@ -156,7 +173,7 @@ describe("Lab 3 Staff Ticket Detail UI Tests (UI-06, UI-07, UI-08)", () => {
     // Change IT Priority
     fireEvent.change(prioritySelect, { target: { value: "URGENT" } });
     await waitFor(() => {
-      expect(api.updateTicketPriority).toHaveBeenCalledWith(101, "URGENT");
+      expect(api.updateTicketPriority).toHaveBeenCalledWith(101, "URGENT", mockTicketDetail.updatedAt);
     });
   });
 
@@ -202,7 +219,8 @@ describe("Lab 3 Staff Ticket Detail UI Tests (UI-06, UI-07, UI-08)", () => {
       expect(api.updateTicketStatus).toHaveBeenCalledWith(
         101,
         "RESOLVED",
-        "Battery unit replaced with new OEM pack."
+        "Battery unit replaced with new OEM pack.",
+        mockTicketDetail.updatedAt
       );
     });
   });

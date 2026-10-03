@@ -2,6 +2,7 @@ import { getPrisma } from "../../prisma.js";
 import { StaffQueueQuery, validateStatusTransitionInput } from "./staff.validation.js";
 import {
   BadRequestError,
+  ConflictError,
   NotFoundError,
   UnprocessableEntityError,
 } from "../../core/errors.js";
@@ -183,6 +184,14 @@ export async function getStaffTicketDetail(ticketId: number) {
         },
         orderBy: { createdAt: "asc" },
       },
+      actionsTaken: {
+        include: {
+          performedBy: {
+            select: { id: true, name: true, email: true, role: true },
+          },
+        },
+        orderBy: { actionDateTime: "asc" },
+      },
     },
   });
 
@@ -234,12 +243,30 @@ export async function getStaffTicketDetail(ticketId: number) {
       createdAt: n.createdAt.toISOString(),
       author: n.author,
     })),
+    actionsTaken: (ticket.actionsTaken || []).map((a: any) => ({
+      id: a.id,
+      ticketId: a.ticketId,
+      actionDateTime: a.actionDateTime.toISOString(),
+      description: a.description,
+      result: a.result,
+      performedByUserId: a.performedByUserId,
+      performedBy: a.performedBy,
+      isFollowUpRequired: a.isFollowUpRequired,
+      followUpNote: a.followUpNote,
+      attachmentNotes: a.attachmentNotes,
+      createdAt: a.createdAt.toISOString(),
+      updatedAt: a.updatedAt.toISOString(),
+    })),
     createdAt: ticket.createdAt.toISOString(),
     updatedAt: ticket.updatedAt.toISOString(),
   };
 }
 
-export async function assignTicket(ticketId: number, ticketOwnerId: number | null) {
+export async function assignTicket(
+  ticketId: number,
+  ticketOwnerId: number | null,
+  expectedUpdatedAt?: string
+) {
   const prisma = getPrisma();
 
   const ticket = await prisma.ticket.findUnique({
@@ -248,6 +275,16 @@ export async function assignTicket(ticketId: number, ticketOwnerId: number | nul
 
   if (!ticket) {
     throw new NotFoundError("Ticket not found.");
+  }
+
+  if (expectedUpdatedAt && ticket.updatedAt.toISOString() !== expectedUpdatedAt) {
+    throw new ConflictError(
+      "Conflict: Ticket has been modified by another user. Please refresh and review latest changes.",
+      [
+        `Stale record detected. Current updatedAt is ${ticket.updatedAt.toISOString()} but expected was ${expectedUpdatedAt}.`,
+      ],
+      ticket.updatedAt.toISOString()
+    );
   }
 
   if (ticketOwnerId !== null) {
@@ -281,7 +318,11 @@ export async function assignTicket(ticketId: number, ticketOwnerId: number | nul
   };
 }
 
-export async function updateTicketPriority(ticketId: number, itPriority: any) {
+export async function updateTicketPriority(
+  ticketId: number,
+  itPriority: any,
+  expectedUpdatedAt?: string
+) {
   const prisma = getPrisma();
 
   const ticket = await prisma.ticket.findUnique({
@@ -290,6 +331,16 @@ export async function updateTicketPriority(ticketId: number, itPriority: any) {
 
   if (!ticket) {
     throw new NotFoundError("Ticket not found.");
+  }
+
+  if (expectedUpdatedAt && ticket.updatedAt.toISOString() !== expectedUpdatedAt) {
+    throw new ConflictError(
+      "Conflict: Ticket has been modified by another user. Please refresh and review latest changes.",
+      [
+        `Stale record detected. Current updatedAt is ${ticket.updatedAt.toISOString()} but expected was ${expectedUpdatedAt}.`,
+      ],
+      ticket.updatedAt.toISOString()
+    );
   }
 
   const updated = await prisma.ticket.update({
@@ -309,20 +360,34 @@ export async function updateTicketPriority(ticketId: number, itPriority: any) {
 export async function updateTicketStatus(
   ticketId: number,
   nextStatus: string,
-  resolutionSummary?: string
+  resolutionSummary?: string,
+  expectedUpdatedAt?: string
 ) {
   const prisma = getPrisma();
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
+    include: {
+      actionsTaken: true,
+    },
   });
 
   if (!ticket) {
     throw new NotFoundError("Ticket not found.");
   }
 
+  if (expectedUpdatedAt && ticket.updatedAt.toISOString() !== expectedUpdatedAt) {
+    throw new ConflictError(
+      "Conflict: Ticket has been modified by another user. Please refresh and review latest changes.",
+      [
+        `Stale record detected. Current updatedAt is ${ticket.updatedAt.toISOString()} but expected was ${expectedUpdatedAt}.`,
+      ],
+      ticket.updatedAt.toISOString()
+    );
+  }
+
   const validation = validateStatusTransitionInput(
-    { currentStatus: nextStatus, resolutionSummary },
+    { status: nextStatus, resolutionSummary, expectedUpdatedAt },
     ticket.currentStatus
   );
 
@@ -330,7 +395,23 @@ export async function updateTicketStatus(
     if (validation.statusCode === 400) {
       throw new BadRequestError(validation.details.join(", "));
     }
-    throw new UnprocessableEntityError("Validation failed", validation.details);
+    throw new UnprocessableEntityError(
+      validation.nextStatus === "RESOLVED" && (!validation.resolutionSummary || validation.resolutionSummary.length < 5)
+        ? "Validation Error: resolutionSummary is required when resolving a ticket (minimum 5 characters)."
+        : "Validation failed",
+      validation.details
+    );
+  }
+
+  // Resolution Gate Enforcement (BR-09):
+  // When transitioning to RESOLVED, at least one Action Taken must exist
+  if (validation.nextStatus === "RESOLVED" && ticket.actionsTaken.length === 0) {
+    throw new UnprocessableEntityError(
+      "Resolution Gate Failed: At least one Action Taken must be recorded before resolution.",
+      [
+        "Ticket has 0 recorded Actions Taken. Record technical actions before marking as Resolved.",
+      ]
+    );
   }
 
   const data: any = {
@@ -343,7 +424,7 @@ export async function updateTicketStatus(
     if (validation.resolutionSummary) {
       data.resolutionSummary = validation.resolutionSummary;
     }
-    // if resolutionSummary omitted, retains existing summary on ticket
+    // if resolutionSummary omitted on CLOSED, retain existing summary on ticket
   } else if (validation.resolutionSummary !== undefined) {
     data.resolutionSummary = validation.resolutionSummary;
   }
@@ -356,8 +437,12 @@ export async function updateTicketStatus(
   return {
     id: updated.id,
     ticketNumber: updated.ticketNumber,
+    summary: updated.summary,
     currentStatus: updated.currentStatus,
     resolutionSummary: updated.resolutionSummary,
+    isRequesterResolved: updated.isRequesterResolved,
+    itPriority: updated.itPriority,
+    ticketOwnerId: updated.ticketOwnerId,
     updatedAt: updated.updatedAt.toISOString(),
   };
 }
