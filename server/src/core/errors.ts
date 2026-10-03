@@ -40,9 +40,12 @@ export class NotFoundError extends ApiError {
 }
 
 export class ConflictError extends ApiError {
-  constructor(message: string = "Conflict", details?: string[]) {
+  public readonly currentUpdatedAt?: string;
+
+  constructor(message: string = "Conflict", details?: string[], currentUpdatedAt?: string) {
     super(409, message, details);
     this.name = "ConflictError";
+    this.currentUpdatedAt = currentUpdatedAt;
   }
 }
 

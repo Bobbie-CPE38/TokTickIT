@@ -546,6 +546,8 @@ async function main() {
   }
 
   // 6. Seed Sample Actions Taken (Lab 4 Sprint Engineering Specification §7.4 & §8)
+  await prisma.actionTaken.deleteMany({});
+
   const allTickets = await prisma.ticket.findMany({
     select: { id: true, ticketNumber: true },
   });

@@ -169,44 +169,68 @@ export function validateAssignmentInput(input: unknown): {
   isValid: boolean;
   details: string[];
   ticketOwnerId: number | null;
+  expectedUpdatedAt?: string;
 } {
   const details: string[] = [];
   if (!input || typeof input !== "object") {
     return { isValid: false, details: ["Request body must be a valid JSON object."], ticketOwnerId: null };
   }
-  const { ticketOwnerId } = input as { ticketOwnerId?: unknown };
+  const { ticketOwnerId, expectedUpdatedAt } = input as {
+    ticketOwnerId?: unknown;
+    expectedUpdatedAt?: unknown;
+  };
 
   if (ticketOwnerId === undefined) {
     return { isValid: false, details: ["ticketOwnerId field is required."], ticketOwnerId: null };
   }
 
+  let parsedExpectedUpdatedAt: string | undefined;
+  if (expectedUpdatedAt !== undefined && expectedUpdatedAt !== null) {
+    if (typeof expectedUpdatedAt !== "string") {
+      return { isValid: false, details: ["expectedUpdatedAt must be an ISO 8601 string."], ticketOwnerId: null };
+    }
+    parsedExpectedUpdatedAt = expectedUpdatedAt;
+  }
+
   if (ticketOwnerId === null) {
-    return { isValid: true, details: [], ticketOwnerId: null };
+    return { isValid: true, details: [], ticketOwnerId: null, expectedUpdatedAt: parsedExpectedUpdatedAt };
   }
 
   if (typeof ticketOwnerId !== "number" || !Number.isInteger(ticketOwnerId) || ticketOwnerId <= 0) {
     return { isValid: false, details: ["ticketOwnerId must be a positive integer or null."], ticketOwnerId: null };
   }
 
-  return { isValid: true, details: [], ticketOwnerId };
+  return { isValid: true, details: [], ticketOwnerId, expectedUpdatedAt: parsedExpectedUpdatedAt };
 }
 
 export function validatePriorityInput(input: unknown): {
   isValid: boolean;
   details: string[];
   itPriority: string;
+  expectedUpdatedAt?: string;
 } {
   const details: string[] = [];
   if (!input || typeof input !== "object") {
     return { isValid: false, details: ["Request body must be a valid JSON object."], itPriority: "" };
   }
-  const { itPriority } = input as { itPriority?: unknown };
+  const { itPriority, expectedUpdatedAt } = input as {
+    itPriority?: unknown;
+    expectedUpdatedAt?: unknown;
+  };
 
   if (!itPriority || typeof itPriority !== "string" || !VALID_PRIORITIES.includes(itPriority)) {
     return { isValid: false, details: [`Invalid itPriority: must be one of ${VALID_PRIORITIES.join(", ")}`], itPriority: "" };
   }
 
-  return { isValid: true, details: [], itPriority };
+  let parsedExpectedUpdatedAt: string | undefined;
+  if (expectedUpdatedAt !== undefined && expectedUpdatedAt !== null) {
+    if (typeof expectedUpdatedAt !== "string") {
+      return { isValid: false, details: ["expectedUpdatedAt must be an ISO 8601 string."], itPriority: "" };
+    }
+    parsedExpectedUpdatedAt = expectedUpdatedAt;
+  }
+
+  return { isValid: true, details: [], itPriority, expectedUpdatedAt: parsedExpectedUpdatedAt };
 }
 
 export function validateStatusTransitionInput(
@@ -218,17 +242,27 @@ export function validateStatusTransitionInput(
   statusCode: number;
   nextStatus: string;
   resolutionSummary?: string;
+  expectedUpdatedAt?: string;
 } {
   if (!input || typeof input !== "object") {
     return { isValid: false, details: ["Request body must be a valid JSON object."], statusCode: 400, nextStatus: "" };
   }
-  const { currentStatus: rawNextStatus, resolutionSummary: rawSummary } = input as {
+  const {
+    status,
+    currentStatus: rawCurrentStatus,
+    resolutionSummary: rawSummary,
+    expectedUpdatedAt: rawExpectedUpdatedAt,
+  } = input as {
+    status?: unknown;
     currentStatus?: unknown;
     resolutionSummary?: unknown;
+    expectedUpdatedAt?: unknown;
   };
 
+  const rawNextStatus = status ?? rawCurrentStatus;
+
   if (!rawNextStatus || typeof rawNextStatus !== "string") {
-    return { isValid: false, details: ["currentStatus field is required and must be a string."], statusCode: 400, nextStatus: "" };
+    return { isValid: false, details: ["status field is required and must be a string."], statusCode: 400, nextStatus: "" };
   }
 
   const nextStatus = rawNextStatus.trim();
@@ -286,11 +320,25 @@ export function validateStatusTransitionInput(
     }
   }
 
+  let expectedUpdatedAt: string | undefined;
+  if (rawExpectedUpdatedAt !== undefined && rawExpectedUpdatedAt !== null) {
+    if (typeof rawExpectedUpdatedAt !== "string") {
+      return {
+        isValid: false,
+        details: ["expectedUpdatedAt must be an ISO 8601 string."],
+        statusCode: 400,
+        nextStatus,
+      };
+    }
+    expectedUpdatedAt = rawExpectedUpdatedAt;
+  }
+
   return {
     isValid: true,
     details: [],
     statusCode: 200,
     nextStatus,
     resolutionSummary,
+    expectedUpdatedAt,
   };
 }

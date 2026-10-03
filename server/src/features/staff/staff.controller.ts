@@ -65,7 +65,11 @@ export async function assignTicket(
       return;
     }
 
-    const result = await staffService.assignTicket(ticketId, validation.ticketOwnerId);
+    const result = await staffService.assignTicket(
+      ticketId,
+      validation.ticketOwnerId,
+      validation.expectedUpdatedAt
+    );
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -90,7 +94,11 @@ export async function updateTicketPriority(
       return;
     }
 
-    const result = await staffService.updateTicketPriority(ticketId, validation.itPriority);
+    const result = await staffService.updateTicketPriority(
+      ticketId,
+      validation.itPriority,
+      validation.expectedUpdatedAt
+    );
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -109,8 +117,16 @@ export async function updateTicketStatus(
       return;
     }
 
-    const { currentStatus, resolutionSummary } = req.body || {};
-    const result = await staffService.updateTicketStatus(ticketId, currentStatus, resolutionSummary);
+    const nextStatus = req.body?.status ?? req.body?.currentStatus;
+    const resolutionSummary = req.body?.resolutionSummary;
+    const expectedUpdatedAt = req.body?.expectedUpdatedAt;
+
+    const result = await staffService.updateTicketStatus(
+      ticketId,
+      nextStatus,
+      resolutionSummary,
+      expectedUpdatedAt
+    );
     res.status(200).json(result);
   } catch (error) {
     next(error);
