@@ -1,0 +1,81 @@
+name: Project status automation
+
+# Moves issues linked to a PR through the project Status column:
+#   draft PR -> Started | ready/updated PR -> PR Review
+#   changes requested -> Fixing | merged -> Done
+# Backlog is set by the built-in "Item added to project" workflow.
+# Specified is moved manually.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, converted_to_draft, synchronize, closed]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+      OWNER: Bobbie-CPE38
+      REPO: ${{ github.event.repository.name }}
+      PROJECT: ${{ vars.PROJECT_NUMBER || '2' }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Decide target status
+        id: status
+        run: |
+          EVENT="${{ github.event_name }}"
+          ACTION="${{ github.event.action }}"
+          DRAFT="${{ github.event.pull_request.draft }}"
+          MERGED="${{ github.event.pull_request.merged }}"
+          REVIEW="${{ github.event.review.state }}"
+          TARGET=""
+          if [ "$EVENT" = "pull_request_review" ]; then
+            [ "$REVIEW" = "changes_requested" ] && TARGET="Fixing"
+          elif [ "$ACTION" = "closed" ]; then
+            [ "$MERGED" = "true" ] && TARGET="Done"
+          elif [ "$DRAFT" = "true" ]; then
+            TARGET="Started"
+          else
+            TARGET="PR Review"
+          fi
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+
+      - name: Move linked issues
+        if: steps.status.outputs.target != ''
+        run: |
+          TARGET="${{ steps.status.outputs.target }}"
+
+          ISSUES=$(gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr="$PR" -f query='
+            query($owner:String!,$repo:String!,$pr:Int!){
+              repository(owner:$owner,name:$repo){
+                pullRequest(number:$pr){
+                  closingIssuesReferences(first:20){ nodes{ url } }
+                }
+              }
+            }' --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[].url')
+
+          if [ -z "$ISSUES" ]; then
+            echo "No linked issues"
+            exit 0
+          fi
+
+          PROJECT_ID=$(gh project view "$PROJECT" --owner "$OWNER" --format json --jq .id)
+          FIELDS=$(gh project field-list "$PROJECT" --owner "$OWNER" --format json)
+          FIELD_ID=$(echo "$FIELDS" | jq -r '.fields[] | select(.name=="Status") | .id')
+          OPTION_ID=$(echo "$FIELDS" | jq -r --arg t "$TARGET" \
+            '.fields[] | select(.name=="Status") | .options[] | select(.name==$t) | .id')
+
+          if [ -z "$OPTION_ID" ]; then
+            echo "Status option '$TARGET' not found" >&2
+            exit 1
+          fi
+
+          for URL in $ISSUES; do
+            # item-add is idempotent: returns the existing item if already in the project
+            ITEM_ID=$(gh project item-add "$PROJECT" --owner "$OWNER" --url "$URL" --format json --jq .id)
+            gh project item-edit --id "$ITEM_ID" --project-id "$PROJECT_ID" \
+              --field-id "$FIELD_ID" --single-select-option-id "$OPTION_ID"
+            echo "Moved $URL -> $TARGET"
+          done
