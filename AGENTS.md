@@ -96,6 +96,20 @@ Per PDF Section 4.2 and course specifications, **DO NOT invent or implement any 
    - Do not implement features outside the scope of the assigned issue.
 3. **Commit Messages:**
    - Use conventional commit messages: `feat(scope): ...`, `fix(scope): ...`, `test(scope): ...`, `docs(scope): ...`.
+4. **Project Board Automation:**
+   - Board: https://github.com/users/Bobbie-CPE38/projects/2 (Status: Backlog, Specified, Started, PR Review, Fixing, Done).
+   - `.github/workflows/project-status.yml` moves the issues linked to a PR. Do NOT move issues to Started, PR Review, Fixing, or Done by hand.
+
+     | PR event | Issue status |
+     |---|---|
+     | Draft PR opened | Started |
+     | PR opened, marked ready for review, or new commits pushed | PR Review |
+     | Review requests changes | Fixing |
+     | PR merged | Done |
+
+   - Backlog is set by the built-in "Item added to project" workflow. Specified is moved manually.
+   - Every PR MUST link its issue with `Closes #N` in the description; the automation finds the issue through that link.
+   - Open the PR as a **draft** when implementation begins, and mark it **Ready for review** when it is done.
 
 ---
 
