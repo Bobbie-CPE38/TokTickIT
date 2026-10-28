@@ -21,7 +21,7 @@ export default defineConfig({
     },
     {
       name: "tablet",
-      testMatch: /.*(authentication|first-login|staff-ticket-flow|user-administration|ticket-resolution)\.spec\.ts/,
+      testMatch: /.*(authentication|first-login|staff-ticket-flow|user-administration|ticket-resolution|dashboards)\.spec\.ts/,
       use: {
         viewport: { width: 768, height: 1024 },
         userAgent:
@@ -30,7 +30,7 @@ export default defineConfig({
     },
     {
       name: "mobile",
-      testMatch: /.*(authentication|first-login|staff-ticket-flow|user-administration|ticket-resolution)\.spec\.ts/,
+      testMatch: /.*(authentication|first-login|staff-ticket-flow|user-administration|ticket-resolution|dashboards)\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 375, height: 667 },

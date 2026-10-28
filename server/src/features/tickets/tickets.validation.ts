@@ -41,6 +41,15 @@ export function validateCreateTicketInput(input: CreateTicketInput): {
   };
 }
 
+// Statuses counted as "open" work for a Requester (FR-15, FR-17)
+export const OPEN_TICKET_STATUSES = [
+  "NEW",
+  "OPEN",
+  "IN_PROGRESS",
+  "WAITING_FOR_REQUESTER",
+  "REOPENED",
+] as const;
+
 export interface TicketListQuery {
   page?: number;
   pageSize?: number;
@@ -48,6 +57,7 @@ export interface TicketListQuery {
   requestedPriority?: string;
   itPriority?: string;
   status?: string;
+  filter?: "open";
   search?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
@@ -127,6 +137,16 @@ export function validateTicketListQuery(rawQuery: any): {
     }
   }
 
+  // Dashboard drill-down: filter=open matches every active status (FR-17)
+  let filter: "open" | undefined;
+  if (rawQuery.filter !== undefined && rawQuery.filter !== "") {
+    if (String(rawQuery.filter) !== "open") {
+      details.push("filter must be: open.");
+    } else {
+      filter = "open";
+    }
+  }
+
   const allowedSortBy = ["createdAt", "updatedAt", "ticketNumber", "requestedPriority"];
   let sortBy = "createdAt";
   if (rawQuery.sortBy !== undefined && rawQuery.sortBy !== "") {
@@ -160,6 +180,7 @@ export function validateTicketListQuery(rawQuery: any): {
       requestedPriority,
       itPriority,
       status,
+      filter,
       search,
       sortBy,
       sortOrder,

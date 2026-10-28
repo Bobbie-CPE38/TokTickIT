@@ -335,6 +335,7 @@ export interface TicketFilterParams {
   requestedPriority?: Priority | "";
   itPriority?: Priority | "";
   status?: TicketStatus | "";
+  filter?: "open";
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
@@ -354,6 +355,7 @@ export async function fetchTickets(
   if (params.itPriority !== undefined && params.itPriority !== "")
     query.set("itPriority", params.itPriority);
   if (params.status !== undefined && params.status !== "") query.set("status", params.status);
+  if (params.filter) query.set("filter", params.filter);
   if (params.sortBy !== undefined && params.sortBy !== "") query.set("sortBy", params.sortBy);
   if (params.sortOrder !== undefined) query.set("sortOrder", params.sortOrder);
 
