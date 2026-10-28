@@ -524,6 +524,7 @@ async function main() {
         currentStatus: t.currentStatus,
         ticketOwnerId: t.ticketOwnerId,
         resolutionSummary: (t as any).resolutionSummary ?? null,
+        isRequesterResolved: false, // re-seeding clears advisory flags set during demos/tests
         categoryId,
         relatedSystemId,
         requesterId: t.requesterId,
