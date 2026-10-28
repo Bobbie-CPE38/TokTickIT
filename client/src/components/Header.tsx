@@ -11,7 +11,8 @@ export type HeaderView =
   | "change-password"
   | "queue"
   | "staff-ticket-detail"
-  | "user-management";
+  | "user-management"
+  | "dashboard";
 
 interface HeaderProps {
   currentView?: HeaderView;
@@ -103,8 +104,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
             onClick={(e) => {
               e.preventDefault();
               if (auth?.isAuthenticated && !auth?.mustChangePassword) {
-                const defaultView = getDefaultViewForRole(activeUser?.role);
-                onNavigate?.(defaultView as HeaderView);
+                onNavigate?.(activeUser?.role ? "dashboard" : (getDefaultViewForRole() as HeaderView));
               } else if (!auth?.isAuthenticated) {
                 onNavigate?.("login");
               }
@@ -131,6 +131,40 @@ export const Header: React.FC<HeaderProps> = ({ currentView = "portal", onNaviga
           {/* Navigation Items (Only rendered if authenticated and not locked in change password or login) */}
           {auth?.isAuthenticated && !auth?.mustChangePassword && currentView !== "login" && currentView !== "change-password" && (
             <nav className="d-flex align-items-center gap-1 gap-sm-3">
+              {/* All roles: Dashboard */}
+              {activeUser?.role && (
+                <button
+                  type="button"
+                  aria-label="Dashboard"
+                  aria-current={currentView === "dashboard" ? "page" : undefined}
+                  className="btn btn-link text-white text-decoration-none d-flex align-items-center gap-2 px-2 py-1 small fw-medium"
+                  style={{
+                    fontSize: "0.9rem",
+                    opacity: currentView === "dashboard" ? 1 : 0.85,
+                    borderBottom: currentView === "dashboard" ? "2px solid #FFFFFF" : "2px solid transparent",
+                    borderRadius: 0,
+                  }}
+                  onClick={() => onNavigate?.("dashboard")}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="3" width="7" height="9" />
+                    <rect x="14" y="3" width="7" height="5" />
+                    <rect x="14" y="12" width="7" height="9" />
+                    <rect x="3" y="16" width="7" height="5" />
+                  </svg>
+                  <span className="d-none d-sm-inline">Dashboard</span>
+                </button>
+              )}
+
               {/* Requester: My Tickets */}
               {(!activeUser?.role || activeUser.role === "REQUESTER") && (
                 <button

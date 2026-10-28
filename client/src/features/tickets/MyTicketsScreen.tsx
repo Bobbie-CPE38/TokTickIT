@@ -11,6 +11,27 @@ import {
 } from "../../api.js";
 import { StatusBadge } from "../../components/common/StatusBadge.js";
 import { PriorityBadge } from "../../components/common/PriorityBadge.js";
+import { getQueryParams } from "../../core/utils/formatters.js";
+
+// "OPEN_ALL" selects every active status via the filter=open query (FR-17)
+type StatusFilter = TicketStatus | "OPEN_ALL" | "";
+
+const DRILL_DOWN_STATUSES: TicketStatus[] = [
+  "NEW",
+  "OPEN",
+  "IN_PROGRESS",
+  "RESOLVED",
+  "CLOSED",
+];
+
+// Dashboard drill-down: ?filter=open or ?status=<STATUS>
+function readInitialStatusFilter(): StatusFilter {
+  const params = getQueryParams();
+  if (params.get("filter") === "open") return "OPEN_ALL";
+  const status = params.get("status") as TicketStatus | null;
+  if (status === "WAITING_FOR_REQUESTER") return "PENDING"; // shown as "Pending" in this list
+  return status && DRILL_DOWN_STATUSES.includes(status) ? status : "";
+}
 
 export interface MyTicketsProps {
   onNavigateCreate: () => void;
@@ -40,7 +61,7 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
   const [categoryId, setCategoryId] = useState<string>("");
   const [requestedPriority, setRequestedPriority] = useState<Priority | "">("");
   const [itPriority, setItPriority] = useState<Priority | "">("");
-  const [status, setStatus] = useState<TicketStatus | "">("");
+  const [status, setStatus] = useState<StatusFilter>(readInitialStatusFilter);
   const [page, setPage] = useState<number>(1);
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -85,7 +106,8 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
           categoryId,
           requestedPriority,
           itPriority,
-          status,
+          status: status === "OPEN_ALL" ? "" : status,
+          filter: status === "OPEN_ALL" ? "open" : undefined,
           sortBy,
           sortOrder,
         },
@@ -421,12 +443,13 @@ export const MyTickets: React.FC<MyTicketsProps> = ({ onNavigateCreate, onSelect
                 style={{ fontSize: "0.85rem", borderColor: "#D1D5DB" }}
                 value={status}
                 onChange={(e) => {
-                  setStatus(e.target.value as TicketStatus | "");
+                  setStatus(e.target.value as StatusFilter);
                   setPage(1);
                 }}
                 aria-label="Current Status"
               >
                 <option value="">All Statuses</option>
+                <option value="OPEN_ALL">All Open</option>
                 <option value="NEW">New</option>
                 <option value="OPEN">Open</option>
                 <option value="IN_PROGRESS">In Progress</option>

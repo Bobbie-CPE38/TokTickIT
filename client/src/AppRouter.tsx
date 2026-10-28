@@ -18,6 +18,7 @@ import { SystemHealthSection } from "./features/reference/SystemHealthSection.js
 import { StaffQueueScreen } from "./features/staff/StaffQueueScreen.js";
 import { StaffDetailScreen } from "./features/staff/StaffDetailScreen.js";
 import { UserManagementScreen } from "./features/admin/UserManagementScreen.js";
+import { RoleDashboard } from "./features/dashboards/index.js";
 
 export function AppRouter() {
   const auth = useAuth();
@@ -181,6 +182,9 @@ export function AppRouter() {
     }
     if (view === "user-management") {
       return <UserManagementScreen />;
+    }
+    if (view === "dashboard") {
+      return <RoleDashboard />;
     }
     return (
       <>

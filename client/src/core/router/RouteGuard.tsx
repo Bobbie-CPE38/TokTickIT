@@ -7,11 +7,13 @@ export type AppView =
   | "change-password"
   | "queue"
   | "staff-ticket-detail"
-  | "user-management";
+  | "user-management"
+  | "dashboard";
 
 export function isViewPermittedForRole(view: AppView, role?: string): boolean {
   if (view === "login" || view === "change-password") return true;
   if (!role) return false;
+  if (view === "dashboard") return ["REQUESTER", "IT_STAFF", "ADMINISTRATOR"].includes(role);
   if (role === "REQUESTER") {
     return ["portal", "my-tickets", "create-ticket", "ticket-detail"].includes(view);
   }
@@ -52,6 +54,8 @@ export function viewToPath(view: AppView, ticketId?: number | null): string {
       return ticketId ? `/queue/${ticketId}` : "/queue";
     case "user-management":
       return "/admin/users";
+    case "dashboard":
+      return "/dashboard";
     case "my-tickets":
     case "portal":
     default:
@@ -59,7 +63,9 @@ export function viewToPath(view: AppView, ticketId?: number | null): string {
   }
 }
 
-export function pathToView(pathname: string): { view: AppView; ticketId: number | null } {
+export function pathToView(path: string): { view: AppView; ticketId: number | null } {
+  // Drill-down links carry filters in the query string (e.g. /queue?status=NEW)
+  const pathname = path.split("?")[0];
   if (pathname === "/login") {
     return { view: "login", ticketId: null };
   }
@@ -82,6 +88,9 @@ export function pathToView(pathname: string): { view: AppView; ticketId: number 
   }
   if (pathname === "/admin/users") {
     return { view: "user-management", ticketId: null };
+  }
+  if (pathname === "/dashboard") {
+    return { view: "dashboard", ticketId: null };
   }
   return { view: "my-tickets", ticketId: null };
 }
