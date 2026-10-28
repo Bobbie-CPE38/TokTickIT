@@ -17,7 +17,7 @@ import {
   RecentAndUrgentTickets,
 } from "./components/OperationalOverview.js";
 
-// Administrators cannot create tickets (POST /api/tickets is 403), so no Create Ticket shortcut
+// Mirrors the Administrator nav in ui-spec 4.1 (Dashboard, Admin), which has no Create Ticket entry
 const ADMIN_QUICK_ACTIONS = [
   { icon: "🔍", label: "Search Tickets", description: "Find tickets in queue", to: "/queue?focus=search" },
   { icon: "📋", label: "Ticket Queue", description: "Review all IT tickets", to: "/queue" },
