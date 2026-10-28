@@ -283,6 +283,8 @@ export const ActionTakenForm: React.FC<ActionTakenFormProps> = ({
                 placeholder="Specify next steps or pending deliveries (up to 1000 characters)..."
                 value={followUpNote}
                 maxLength={1000}
+                aria-invalid={followUpError ? true : undefined}
+                aria-describedby={followUpError ? "followUpNote-error" : undefined}
                 onChange={(e) => {
                   setFollowUpNote(e.target.value);
                   if (followUpError && e.target.value.trim().length >= 3) {
@@ -291,7 +293,7 @@ export const ActionTakenForm: React.FC<ActionTakenFormProps> = ({
                 }}
               />
               {followUpError && (
-                <div className="small mt-1" style={{ color: "#991B1B" }}>
+                <div id="followUpNote-error" className="small mt-1" style={{ color: "#991B1B" }}>
                   {followUpError}
                 </div>
               )}

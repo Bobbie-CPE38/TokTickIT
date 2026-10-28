@@ -738,12 +738,14 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
           className="modal show d-block"
           tabIndex={-1}
           role="dialog"
+          aria-modal="true"
+          aria-labelledby="resolve-modal-title"
           style={{ backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 1060 }}
         >
           <div className="modal-dialog modal-dialog-centered" role="document">
             <div className="modal-content border-0 shadow">
               <div className="modal-header border-bottom">
-                <h5 className="modal-title fw-bold" style={{ color: "#1C2D27" }}>
+                <h5 id="resolve-modal-title" className="modal-title fw-bold" style={{ color: "#1C2D27" }}>
                   Confirm Problem Resolution
                 </h5>
                 <button
@@ -780,7 +782,14 @@ export const RequesterTicketDetail: React.FC<RequesterTicketDetailProps> = ({
                   onClick={handleConfirmResolve}
                   disabled={resolving}
                 >
-                  {resolving ? "Confirming..." : "Confirm"}
+                  {resolving ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                      Confirming...
+                    </>
+                  ) : (
+                    "Confirm"
+                  )}
                 </button>
               </div>
             </div>

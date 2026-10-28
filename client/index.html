@@ -10,6 +10,24 @@
       input[type="password"]::-ms-clear {
         display: none;
       }
+
+      /* Zen Green focus ring on interactive controls (ui-spec 10); :root outranks Bootstrap, which loads later */
+      :root .btn:focus-visible,
+      :root .form-control:focus,
+      :root .form-select:focus,
+      :root .form-check-input:focus {
+        border-color: #0B7A46;
+        box-shadow: 0 0 0 3px rgba(11, 122, 70, 0.2);
+      }
+
+      /* Mobile touch targets >= 44px (ui-spec 9.3); overrides inline minHeight on buttons */
+      @media (max-width: 767.98px) {
+        .btn:not(.btn-close):not(.btn-link),
+        .form-control,
+        .form-select {
+          min-height: 44px !important;
+        }
+      }
     </style>
   </head>
   <body>
