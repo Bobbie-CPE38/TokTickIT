@@ -277,6 +277,15 @@ describe("Lab 3 Staff Ticket Detail & Operations API Tests (API-14 to API-20, AP
     expect(inProgressRes.status).toBe(200);
     expect(inProgressRes.body.currentStatus).toBe("IN_PROGRESS");
 
+    // Record ActionTaken for Resolution Gate (FR-24, BR-09, Decision 9)
+    await request(app)
+      .post(`/api/tickets/${ticketId}/actions-taken`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({
+        description: "Replaced faulty switch port.",
+        result: "Verified uplink connectivity.",
+      });
+
     // IN_PROGRESS -> RESOLVED (with resolutionSummary)
     const resolvedRes = await request(app)
       .patch(`/api/staff/tickets/${ticketId}/status`)
@@ -369,6 +378,15 @@ describe("Lab 3 Staff Ticket Detail & Operations API Tests (API-14 to API-20, AP
       .patch(`/api/staff/tickets/${ticketId}/status`)
       .set("Authorization", `Bearer ${staffToken}`)
       .send({ currentStatus: "IN_PROGRESS" });
+
+    // Record ActionTaken for Resolution Gate (FR-24, BR-09, Decision 9)
+    await request(app)
+      .post(`/api/tickets/${ticketId}/actions-taken`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({
+        description: "Checking hardware logs.",
+        result: "Hardware log check complete.",
+      });
 
     // Missing resolutionSummary
     const resMissing = await request(app)
