@@ -62,7 +62,9 @@ jobs:
 
           # GitHub only fills closingIssuesReferences for PRs into the default branch,
           # so also honour "Closes/Fixes/Resolves #N" in the body (PRs into lab4-staging)
-          BODY_NUMBERS=$(printf '%s' "$PR_BODY" \
+          # Code spans and fenced blocks are ignored, as GitHub does for keywords
+          BODY_NUMBERS=$(printf '%s\n' "$PR_BODY" | tr -d '\r' \
+            | sed '/^[[:space:]]*```/,/^[[:space:]]*```/d' | sed 's/`[^`]*`//g' \
             | grep -oiE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+#[0-9]+' \
             | grep -oE '[0-9]+$' | sort -u || true)
           for N in $BODY_NUMBERS; do
