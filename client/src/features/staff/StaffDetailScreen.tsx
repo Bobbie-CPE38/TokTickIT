@@ -690,7 +690,14 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
                     onClick={handlePostComment}
                     disabled={postingComment || !newComment.trim()}
                   >
-                    {postingComment ? "Posting..." : "Post Comment"}
+                    {postingComment ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                        Posting...
+                      </>
+                    ) : (
+                      "Post Comment"
+                    )}
                   </button>
                 </div>
               </div>
@@ -774,7 +781,14 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
                     onClick={handlePostNote}
                     disabled={postingNote || !newNote.trim()}
                   >
-                    {postingNote ? "Saving..." : "Save Internal Note"}
+                    {postingNote ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Internal Note"
+                    )}
                   </button>
                 </div>
               </div>
@@ -855,11 +869,12 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
           style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
           role="dialog"
           aria-modal="true"
+          aria-labelledby="status-modal-title"
         >
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header">
-                <h5 className="modal-title fw-bold">
+                <h5 id="status-modal-title" className="modal-title fw-bold">
                   {pendingStatus === "RESOLVED" && "Resolve Ticket"}
                   {pendingStatus === "CLOSED" && "Close Ticket"}
                   {pendingStatus === "REOPENED" && "Reopen Ticket"}
@@ -1003,6 +1018,9 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
                       (actionsCount === 0 || modalSummary.trim().length < 5 || modalSummary.trim().length > 1000))
                   }
                 >
+                  {updatingStatus && (
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                  )}
                   {updatingStatus
                     ? "Updating..."
                     : pendingStatus === "RESOLVED"
@@ -1027,11 +1045,12 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
           style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1060 }}
           role="dialog"
           aria-modal="true"
+          aria-labelledby="conflict-modal-title"
         >
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header bg-warning bg-opacity-10 border-bottom border-warning">
-                <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                <h5 id="conflict-modal-title" className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
                   <span>⚠️</span> Stale Record Detected
                 </h5>
                 <button
