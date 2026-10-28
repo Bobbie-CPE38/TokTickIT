@@ -133,7 +133,7 @@ describe("Lab 4 Requester Dashboard API Tests (API-17, API-18)", () => {
 
     const ownedIds = (
       await prisma.ticket.findMany({ where: { requesterId }, select: { id: true } })
-    ).map((t) => t.id);
+    ).map((t: { id: number }) => t.id);
     for (const t of res.body.recentTickets) {
       expect(ownedIds).toContain(t.id);
     }
@@ -184,7 +184,7 @@ describe("Lab 4 Requester Dashboard API Tests (API-17, API-18)", () => {
     expect(res.body.recentTickets).toHaveLength(5);
 
     const expectedIds = owned
-      .map((t) => t.id)
+      .map((t: { id: number }) => t.id)
       .reverse()
       .slice(0, 5);
     expect(res.body.recentTickets.map((t: any) => t.id)).toEqual(expectedIds);
