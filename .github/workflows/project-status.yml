@@ -1,6 +1,7 @@
 name: Project status automation
 
-# Moves issues linked to a PR through the project Status column:
+# Moves issues linked to a PR (sidebar links or Closes/Fixes/Resolves #N in the
+# PR body) through the project Status column:
 #   draft PR -> Started | ready/updated PR -> PR Review
 #   changes requested -> Fixing | merged -> Done
 # Backlog is set by the built-in "Item added to project" workflow.
@@ -44,6 +45,9 @@ jobs:
 
       - name: Move linked issues
         if: steps.status.outputs.target != ''
+        env:
+          # Passed via env (not inline) so PR text cannot inject shell code
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           TARGET="${{ steps.status.outputs.target }}"
 
@@ -55,6 +59,20 @@ jobs:
                 }
               }
             }' --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[].url')
+
+          # GitHub only fills closingIssuesReferences for PRs into the default branch,
+          # so also honour "Closes/Fixes/Resolves #N" in the body (PRs into lab4-staging)
+          BODY_NUMBERS=$(printf '%s' "$PR_BODY" \
+            | grep -oiE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+#[0-9]+' \
+            | grep -oE '[0-9]+$' | sort -u || true)
+          for N in $BODY_NUMBERS; do
+            # Skip numbers that point at pull requests rather than issues
+            IS_PR=$(gh api "repos/$OWNER/$REPO/issues/$N" --jq 'has("pull_request")' 2>/dev/null || echo skip)
+            if [ "$IS_PR" = "false" ]; then
+              ISSUES="$ISSUES"$'\n'"https://github.com/$OWNER/$REPO/issues/$N"
+            fi
+          done
+          ISSUES=$(printf '%s\n' "$ISSUES" | sed '/^$/d' | sort -u)
 
           if [ -z "$ISSUES" ]; then
             echo "No linked issues"
