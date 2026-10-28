@@ -1,14 +1,16 @@
 import { test, expect, APIRequestContext } from "@playwright/test";
 
+const API_URL = process.env.E2E_API_URL ?? "http://localhost:3000";
+
 async function resetDavidInitialPassword(request: APIRequestContext) {
   try {
-    const loginRes = await request.post("http://localhost:3000/api/auth/login", {
+    const loginRes = await request.post(`${API_URL}/api/auth/login`, {
       data: { email: "admin@toktickit.com", password: "AdminPass123!" },
     });
     if (!loginRes.ok()) return;
     const { token } = await loginRes.json();
     const usersRes = await request.get(
-      "http://localhost:3000/api/admin/users?search=staff.david@toktickit.com",
+      `${API_URL}/api/admin/users?search=staff.david@toktickit.com`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -18,7 +20,7 @@ async function resetDavidInitialPassword(request: APIRequestContext) {
     const david = users.find((u: any) => u.email === "staff.david@toktickit.com");
     if (david) {
       await request.post(
-        `http://localhost:3000/api/admin/users/${david.id}/reset-password`,
+        `${API_URL}/api/admin/users/${david.id}/reset-password`,
         {
           headers: { Authorization: `Bearer ${token}` },
           data: { initialPassword: "InitialPass123!" },

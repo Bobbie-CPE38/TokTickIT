@@ -102,11 +102,8 @@ test.describe("IT Staff Ticket Queue & Detail Operations (E2E-03)", () => {
     const summaryTextarea = page.locator("#modal-resolution-summary");
     const confirmBtn = page.locator('.modal-footer button:has-text("Confirm Resolution")');
 
-    // Attempt submit with empty summary -> rejected
-    await confirmBtn.click();
-    await expect(
-      page.locator("text=Resolution summary is required and must be at least 5 characters.")
-    ).toBeVisible();
+    // Empty summary -> confirmation stays disabled (Lab 4 Resolution Gate, BR-09)
+    await expect(confirmBtn).toBeDisabled();
 
     // Enter compliant resolution summary >= 5 chars
     await summaryTextarea.fill("Replaced client VPN profile and resolved network handshake failure.");

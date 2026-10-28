@@ -182,7 +182,7 @@ test.describe("Visual Responsive Screenshots & Layout Audits", () => {
   // Group 3: Staff Ticket Detail Screenshots
   // -------------------------------------------------------------
   test("Capture Staff Ticket Detail Screenshots", async ({ page }) => {
-    // Log in as Michael Brown and navigate to ticket 101
+    // Log in as Michael Brown and open ticket 106 (has an Action Taken, so the Resolution Gate shows the summary field)
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/login");
     await page.evaluate(() => localStorage.clear());
@@ -192,11 +192,11 @@ test.describe("Visual Responsive Screenshots & Layout Audits", () => {
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/queue/);
 
-    await page.locator('input[aria-label="Search tickets"]').fill("TKT-2026-000101");
+    await page.locator('input[aria-label="Search tickets"]').fill("TKT-2026-000106");
     await page.waitForTimeout(500);
-    await page.locator('tr:has-text("TKT-2026-000101")').click();
+    await page.locator('tr:has-text("TKT-2026-000106")').click();
     await expect(page).toHaveURL(/\/queue\/\d+/);
-    await expect(page.locator("text=TKT-2026-000101")).toBeVisible();
+    await expect(page.locator("text=TKT-2026-000106")).toBeVisible();
 
     // 01-staff-detail-desktop.png (4-column metadata grid)
     await assertZeroHorizontalOverflow(page);

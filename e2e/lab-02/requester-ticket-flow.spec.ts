@@ -1,36 +1,48 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Lab 3 replaced the Lab 2 development requester selector with real authentication.
+async function signIn(page: Page, email: string) {
+  await page.goto("/login");
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  await page.goto("/login");
+  await page.locator("#email").fill(email);
+  await page.locator("#password").fill("Password123!");
+  await page.locator('button[type="submit"]:has-text("Sign In")').click();
+}
+
 test.describe("Requester Ticket Flow (E2E-01)", () => {
   test.beforeEach(async ({ page }) => {
-    // Clear localStorage to ensure a clean requester selection state
-    await page.goto("/");
+    // Clear stored credentials to start signed out
+    await page.goto("/login");
     await page.evaluate(() => localStorage.clear());
-    await page.reload();
+    await page.goto("/login");
   });
 
   test("E2E-01: Complete Requester Flow - Select User -> Create Ticket with Attachment -> View in My Tickets -> Inspect Detail -> Soft Remove Attachment", async ({
     page,
   }) => {
     // -------------------------------------------------------------
-    // Step 1: Select Development Requester (AC-02, AC-05)
+    // Step 1: Sign in as the Requester (AC-02, AC-05)
     // -------------------------------------------------------------
-    // Verify modal appears when unauthenticated
-    await expect(page.locator("h1")).toContainText("Select Development Requester");
+    // Unauthenticated users see the sign-in screen
+    await expect(page.locator("h1")).toContainText("Sign in to your account");
 
-    // Verify Inactive requester is excluded (AC-05)
-    const selectOptions = await page.locator("#requester-select option").allTextContents();
-    expect(selectOptions.some((opt) => opt.includes("Alex Inactive"))).toBe(false);
+    // Inactive requester cannot sign in (AC-05)
+    await signIn(page, "alex.inactive@kmutt.ac.th");
+    await expect(page.locator('div[role="alert"]')).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
 
-    // Select Jennifer Anderson (ID 1)
-    await page.locator("#requester-select").selectOption({ label: "Jennifer Anderson" });
-    await page.locator('button[type="submit"]:has-text("Continue")').click();
-
-    // Verify modal is dismissed and header reflects Jennifer Anderson
+    // Sign in as Jennifer Anderson; header reflects her identity
+    await signIn(page, "jennifer.anderson@kmutt.ac.th");
+    await expect(page).toHaveURL(/\/tickets/);
     await expect(page.locator("header")).toContainText("Jennifer Anderson");
 
     // -------------------------------------------------------------
@@ -145,14 +157,12 @@ test.describe("Requester Ticket Flow (E2E-01)", () => {
     // -------------------------------------------------------------
     // Step 6: Multi-Tenant Requester Switch (AC-04)
     // -------------------------------------------------------------
-    // Open Profile dropdown
+    // Sign out from the Profile menu, then sign in as David Lee
     await page.locator('button[aria-label="Profile"]').click();
-    await page.locator('button:has-text("Switch Requester")').click();
-
-    // Select David Lee
-    await expect(page.locator("h1")).toContainText("Select Development Requester");
-    await page.locator("#requester-select").selectOption({ label: "David Lee" });
-    await page.locator('button[type="submit"]:has-text("Continue")').click();
+    await page.locator('button:has-text("Sign Out")').click();
+    await expect(page).toHaveURL(/\/login/);
+    await signIn(page, "david.lee@kmutt.ac.th");
+    await expect(page.locator("header")).toContainText("David Lee");
 
     // Verify My Tickets list refreshed and Jennifer's ticket is NOT present (AC-04)
     await expect(page.locator("h1")).toContainText("My Tickets");
