@@ -6,6 +6,7 @@ import {
 } from "../../core/errors.js";
 import {
   CreateTicketInput,
+  OPEN_TICKET_STATUSES,
   TicketListQuery,
   validateCreateTicketInput,
 } from "./tickets.validation.js";
@@ -80,6 +81,7 @@ export async function listRequesterTickets(query: TicketListQuery, requester: Au
     requestedPriority,
     itPriority,
     status,
+    filter,
     search,
     sortBy = "createdAt",
     sortOrder = "desc",
@@ -100,6 +102,8 @@ export async function listRequesterTickets(query: TicketListQuery, requester: Au
   }
   if (status !== undefined) {
     where.currentStatus = status;
+  } else if (filter === "open") {
+    where.currentStatus = { in: [...OPEN_TICKET_STATUSES] };
   }
 
   if (search) {

@@ -16,6 +16,7 @@ export function errorHandler(
     res.status(err.statusCode).json({
       error: err.message,
       ...(err.details && err.details.length > 0 ? { details: err.details } : {}),
+      ...((err as any).currentUpdatedAt ? { currentUpdatedAt: (err as any).currentUpdatedAt } : {}),
     });
     return;
   }

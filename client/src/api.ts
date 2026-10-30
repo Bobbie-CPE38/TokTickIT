@@ -1,3 +1,5 @@
+import { ActionTaken } from "./features/actions-taken/types.js";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 export class ApiError extends Error {
@@ -333,6 +335,7 @@ export interface TicketFilterParams {
   requestedPriority?: Priority | "";
   itPriority?: Priority | "";
   status?: TicketStatus | "";
+  filter?: "open";
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
@@ -352,6 +355,7 @@ export async function fetchTickets(
   if (params.itPriority !== undefined && params.itPriority !== "")
     query.set("itPriority", params.itPriority);
   if (params.status !== undefined && params.status !== "") query.set("status", params.status);
+  if (params.filter) query.set("filter", params.filter);
   if (params.sortBy !== undefined && params.sortBy !== "") query.set("sortBy", params.sortBy);
   if (params.sortOrder !== undefined) query.set("sortOrder", params.sortOrder);
 
@@ -415,6 +419,7 @@ export interface TicketDetail {
   relatedSystemId: number;
   relatedSystem: { id: number; name: string };
   attachments: Attachment[];
+  actionsTaken?: ActionTaken[];
   createdAt: string;
   updatedAt: string;
 }
@@ -737,6 +742,7 @@ export interface StaffTicketDetail {
   attachments: Attachment[];
   publicComments: PublicComment[];
   internalNotes: InternalNote[];
+  actionsTaken?: ActionTaken[];
   createdAt: string;
   updatedAt: string;
 }
@@ -768,26 +774,32 @@ export async function fetchStaffTicketDetail(ticketId: number): Promise<StaffTic
 
 export async function updateTicketAssignment(
   ticketId: number,
-  ticketOwnerId: number | null
+  ticketOwnerId: number | null,
+  expectedUpdatedAt?: string
 ): Promise<{ id: number; ticketNumber: string; ticketOwnerId: number | null; ticketOwner: any; updatedAt: string }> {
   const url = `${API_URL}/api/staff/tickets/${ticketId}/assignment`;
+  const body: any = { ticketOwnerId };
+  if (expectedUpdatedAt) body.expectedUpdatedAt = expectedUpdatedAt;
+
   const res = await fetch(url, {
     method: "PATCH",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ ticketOwnerId }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     let errorMsg = `Failed to assign ticket with status ${res.status}`;
+    let details: string[] | undefined;
     try {
       const data = await res.json();
+      details = data.details;
       if (data.details && Array.isArray(data.details)) {
         errorMsg = data.details.join(", ");
       } else if (data.error) {
         errorMsg = data.error;
       }
     } catch {}
-    throw new Error(errorMsg);
+    throw new ApiError(errorMsg, res.status, details);
   }
 
   return res.json();
@@ -795,26 +807,32 @@ export async function updateTicketAssignment(
 
 export async function updateTicketPriority(
   ticketId: number,
-  itPriority: Priority
+  itPriority: Priority,
+  expectedUpdatedAt?: string
 ): Promise<{ id: number; ticketNumber: string; requestedPriority: Priority; itPriority: Priority; updatedAt: string }> {
   const url = `${API_URL}/api/staff/tickets/${ticketId}/priority`;
+  const body: any = { itPriority };
+  if (expectedUpdatedAt) body.expectedUpdatedAt = expectedUpdatedAt;
+
   const res = await fetch(url, {
     method: "PATCH",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ itPriority }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     let errorMsg = `Failed to update IT Priority with status ${res.status}`;
+    let details: string[] | undefined;
     try {
       const data = await res.json();
+      details = data.details;
       if (data.details && Array.isArray(data.details)) {
         errorMsg = data.details.join(", ");
       } else if (data.error) {
         errorMsg = data.error;
       }
     } catch {}
-    throw new Error(errorMsg);
+    throw new ApiError(errorMsg, res.status, details);
   }
 
   return res.json();
@@ -823,26 +841,32 @@ export async function updateTicketPriority(
 export async function updateTicketStatus(
   ticketId: number,
   currentStatus: TicketStatus,
-  resolutionSummary?: string
+  resolutionSummary?: string,
+  expectedUpdatedAt?: string
 ): Promise<{ id: number; ticketNumber: string; currentStatus: TicketStatus; resolutionSummary?: string | null; updatedAt: string }> {
   const url = `${API_URL}/api/staff/tickets/${ticketId}/status`;
+  const body: any = { currentStatus, status: currentStatus, resolutionSummary };
+  if (expectedUpdatedAt) body.expectedUpdatedAt = expectedUpdatedAt;
+
   const res = await fetch(url, {
     method: "PATCH",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ currentStatus, resolutionSummary }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     let errorMsg = `Failed to update status with status ${res.status}`;
+    let details: string[] | undefined;
     try {
       const data = await res.json();
+      details = data.details;
       if (data.details && Array.isArray(data.details)) {
         errorMsg = data.details.join(", ");
       } else if (data.error) {
         errorMsg = data.error;
       }
     } catch {}
-    throw new Error(errorMsg);
+    throw new ApiError(errorMsg, res.status, details);
   }
 
   return res.json();
@@ -1048,5 +1072,13 @@ export async function resetUserInitialPassword(
   return res.json();
 }
 
-
-
+// ---------------------------------------------------------------------------
+// Actions Taken API Functions (Lab 4)
+// ---------------------------------------------------------------------------
+export * from "./features/actions-taken/types.js";
+export {
+  fetchActionsTaken,
+  fetchActionTakenById,
+  createActionTaken,
+  updateActionTaken,
+} from "./features/actions-taken/api.js";

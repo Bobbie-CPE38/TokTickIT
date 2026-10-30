@@ -3,6 +3,31 @@ import * as api from "../../api.js";
 import { PriorityBadge } from "../../components/common/PriorityBadge.js";
 import { StatusBadge } from "../../components/common/StatusBadge.js";
 import { useRouter } from "../../core/router/RouterContext.js";
+import { useAuth } from "../../context/AuthContext.js";
+import { getQueryParams } from "../../core/utils/formatters.js";
+
+const QUEUE_STATUSES = [
+  "NEW",
+  "OPEN",
+  "IN_PROGRESS",
+  "WAITING_FOR_REQUESTER",
+  "RESOLVED",
+  "CLOSED",
+  "REOPENED",
+  "CANCELLED",
+];
+
+// Dashboard drill-down filters (FR-20): ?status=NEW, ?owner=me, ?owner=unassigned, ?focus=search
+function readInitialQueueFilters() {
+  const params = getQueryParams();
+  const status = params.get("status") ?? "";
+  const owner = params.get("owner") ?? "";
+  return {
+    status: QUEUE_STATUSES.includes(status) ? status : "",
+    owner: owner === "me" || owner === "unassigned" ? owner : "",
+    focusSearch: params.get("focus") === "search",
+  };
+}
 
 interface StaffQueueScreenProps {
   onSelectTicket?: (ticketId: number) => void;
@@ -15,6 +40,14 @@ export const StaffQueueScreen: React.FC<StaffQueueScreenProps> = ({ onSelectTick
   } catch {
     // Graceful fallback if rendered outside RouterProvider
   }
+
+  const currentUserId = useAuth().user?.id;
+  const [initialFilters] = useState(readInitialQueueFilters);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (initialFilters.focusSearch) searchInputRef.current?.focus();
+  }, [initialFilters.focusSearch]);
 
   // Data states
   const [tickets, setTickets] = useState<api.StaffTicket[]>([]);
@@ -31,10 +64,10 @@ export const StaffQueueScreen: React.FC<StaffQueueScreenProps> = ({ onSelectTick
   // Search and filter states
   const [searchInput, setSearchInput] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<string>(initialFilters.status);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedPriority, setSelectedPriority] = useState<string>("");
-  const [selectedOwner, setSelectedOwner] = useState<string>("");
+  const [selectedOwner, setSelectedOwner] = useState<string>(initialFilters.owner);
 
   // Sort states
   const [sortBy, setSortBy] = useState<string>("createdAt");
@@ -87,6 +120,8 @@ export const StaffQueueScreen: React.FC<StaffQueueScreenProps> = ({ onSelectTick
         ticketOwnerId:
           selectedOwner === "unassigned"
             ? "unassigned"
+            : selectedOwner === "me"
+            ? currentUserId
             : selectedOwner
             ? parseInt(selectedOwner, 10)
             : undefined,
@@ -111,6 +146,7 @@ export const StaffQueueScreen: React.FC<StaffQueueScreenProps> = ({ onSelectTick
     selectedCategory,
     selectedPriority,
     selectedOwner,
+    currentUserId,
   ]);
 
   useEffect(() => {
@@ -212,6 +248,7 @@ export const StaffQueueScreen: React.FC<StaffQueueScreenProps> = ({ onSelectTick
                   </svg>
                 </span>
                 <input
+                  ref={searchInputRef}
                   type="text"
                   className="form-control border-start-0"
                   style={{ borderColor: "#D1D5DB", minHeight: "40px" }}
@@ -301,6 +338,7 @@ export const StaffQueueScreen: React.FC<StaffQueueScreenProps> = ({ onSelectTick
                 }}
               >
                 <option value="">All Owners</option>
+                <option value="me">Assigned to Me</option>
                 <option value="unassigned">Unassigned</option>
               </select>
             </div>

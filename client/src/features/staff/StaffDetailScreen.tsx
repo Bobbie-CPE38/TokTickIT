@@ -4,10 +4,12 @@ import { useRouter } from "../../core/router/RouterContext.js";
 import * as api from "../../api.js";
 import { PriorityBadge } from "../../components/common/PriorityBadge.js";
 import { AttachmentList } from "../attachments/AttachmentList.js";
+import { ActionsTakenSection } from "../actions-taken/components/ActionsTakenSection.js";
 
 interface StaffDetailScreenProps {
   ticketId?: number;
   onBack?: () => void;
+  defaultTab?: "comments" | "notes" | "attachments" | "actions";
 }
 
 const PERMITTED_TRANSITIONS: Record<string, string[]> = {
@@ -21,7 +23,11 @@ const PERMITTED_TRANSITIONS: Record<string, string[]> = {
   CANCELLED: [],
 };
 
-export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, onBack }) => {
+export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({
+  ticketId,
+  onBack,
+  defaultTab = "comments",
+}) => {
   let router: ReturnType<typeof useRouter> | null = null;
   try {
     router = useRouter();
@@ -44,8 +50,11 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
   const [updatingPriority, setUpdatingPriority] = useState<boolean>(false);
   const [updatingStatus, setUpdatingStatus] = useState<boolean>(false);
 
-  // Tabs: comments, notes, attachments
-  const [activeTab, setActiveTab] = useState<"comments" | "notes" | "attachments">("comments");
+  // Tabs: comments, notes, attachments, actions
+  const [activeTab, setActiveTab] = useState<"comments" | "notes" | "attachments" | "actions">(
+    defaultTab
+  );
+  const [actionsCount, setActionsCount] = useState<number>(0);
 
   // Public comments state
   const [comments, setComments] = useState<api.PublicComment[]>([]);
@@ -64,6 +73,10 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
   const [modalSummary, setModalSummary] = useState<string>("");
   const [modalError, setModalError] = useState<string | null>(null);
 
+  // Concurrency conflict modal state
+  const [showConflictModal, setShowConflictModal] = useState<boolean>(false);
+  const [conflictDetails, setConflictDetails] = useState<string | null>(null);
+
   const handleBack = () => {
     if (onBack) {
       onBack();
@@ -72,19 +85,33 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
     }
   };
 
+  const handleActionsChange = useCallback((updated: api.ActionTaken[]) => {
+    setActionsCount(updated.length);
+    setTicket((prev) => (prev ? { ...prev, actionsTaken: updated } : null));
+  }, []);
+
   const loadTicketData = useCallback(async () => {
     if (!ticketId) return;
     setLoading(true);
     setError(null);
     try {
-      const [ticketData, assigneesData] = await Promise.all([
+      const [ticketData, assigneesData, actionsData] = await Promise.all([
         api.fetchStaffTicketDetail(ticketId),
         api.fetchStaffAssignees().catch(() => []),
+        api.fetchActionsTaken(ticketId).catch(() => []),
       ]);
-      setTicket(ticketData);
+      const initialActions =
+        Array.isArray(actionsData) && actionsData.length > 0
+          ? actionsData
+          : ticketData.actionsTaken || [];
+      setTicket({
+        ...ticketData,
+        actionsTaken: initialActions,
+      });
       setComments(ticketData.publicComments || []);
       setNotes(ticketData.internalNotes || []);
       setAssignees(assigneesData);
+      setActionsCount(initialActions.length);
     } catch (err: any) {
       setError(err.message || "Failed to load ticket detail.");
     } finally {
@@ -104,20 +131,26 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
     setUpdatingOwner(true);
     setError(null);
     try {
-      const res = await api.updateTicketAssignment(ticketId, newOwnerId);
+      const res = await api.updateTicketAssignment(ticketId, newOwnerId, ticket?.updatedAt);
       setTicket((prev) =>
         prev
           ? {
               ...prev,
               ticketOwnerId: res.ticketOwnerId,
               ticketOwner: res.ticketOwner,
+              updatedAt: res.updatedAt,
             }
           : null
       );
       setSuccessMessage("Ticket ownership updated.");
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      setError(err.message || "Failed to update ticket owner.");
+      if (err?.status === 409 || err?.message?.includes("409") || err?.message?.includes("modified by another user")) {
+        setShowConflictModal(true);
+        setConflictDetails(err.message);
+      } else {
+        setError(err.message || "Failed to update ticket owner.");
+      }
     } finally {
       setUpdatingOwner(false);
     }
@@ -130,19 +163,25 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
     setUpdatingPriority(true);
     setError(null);
     try {
-      const res = await api.updateTicketPriority(ticketId, newPriority);
+      const res = await api.updateTicketPriority(ticketId, newPriority, ticket?.updatedAt);
       setTicket((prev) =>
         prev
           ? {
               ...prev,
               itPriority: res.itPriority,
+              updatedAt: res.updatedAt,
             }
           : null
       );
       setSuccessMessage("IT Priority updated.");
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      setError(err.message || "Failed to update IT Priority.");
+      if (err?.status === 409 || err?.message?.includes("409") || err?.message?.includes("modified by another user")) {
+        setShowConflictModal(true);
+        setConflictDetails(err.message);
+      } else {
+        setError(err.message || "Failed to update IT Priority.");
+      }
     } finally {
       setUpdatingPriority(false);
     }
@@ -169,13 +208,14 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
     setError(null);
     setModalError(null);
     try {
-      const res = await api.updateTicketStatus(ticketId, nextStatus, summary);
+      const res = await api.updateTicketStatus(ticketId, nextStatus, summary, ticket?.updatedAt);
       setTicket((prev) =>
         prev
           ? {
               ...prev,
               currentStatus: res.currentStatus,
               resolutionSummary: res.resolutionSummary !== undefined ? res.resolutionSummary : prev.resolutionSummary,
+              updatedAt: res.updatedAt,
             }
           : null
       );
@@ -185,7 +225,11 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
       setSuccessMessage(`Ticket status transitioned to ${nextStatus}.`);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      if (isFromModal || pendingStatus) {
+      if (err?.status === 409 || err?.message?.includes("409") || err?.message?.includes("modified by another user")) {
+        setPendingStatus(null);
+        setShowConflictModal(true);
+        setConflictDetails(err.message);
+      } else if (isFromModal || pendingStatus) {
         setModalError(err.message || "Failed to update ticket status.");
       } else {
         setError(err.message || "Failed to update ticket status.");
@@ -200,6 +244,10 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
     if (!pendingStatus) return;
 
     if (pendingStatus === "RESOLVED") {
+      if (actionsCount === 0) {
+        setModalError("At least one Action Taken must be recorded before resolution.");
+        return;
+      }
       const trimmed = modalSummary.trim();
       if (!trimmed || trimmed.length < 5) {
         setModalError("Resolution summary is required and must be at least 5 characters.");
@@ -549,7 +597,7 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
         </div>
       </div>
 
-      {/* Tabs Navigation: Public Comments, Internal Notes, Attachments */}
+      {/* Tabs Navigation: Public Comments, Internal Notes, Attachments, Actions Taken */}
       <div className="card shadow-sm border-0 mb-4" style={{ borderRadius: "8px" }}>
         <div className="card-header bg-white border-bottom p-0">
           <ul className="nav nav-tabs border-0 px-3 pt-2" role="tablist">
@@ -598,6 +646,21 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                 Attachments ({ticket.attachments.filter((a) => !a.isRemoved).length})
               </button>
             </li>
+            <li className="nav-item" role="presentation">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "actions"}
+                className={`nav-link border-0 fw-semibold ${activeTab === "actions" ? "active" : "text-muted"}`}
+                style={{
+                  color: activeTab === "actions" ? "#006B3C" : undefined,
+                  borderBottom: activeTab === "actions" ? "3px solid #006B3C" : "none",
+                }}
+                onClick={() => setActiveTab("actions")}
+              >
+                Actions Taken ({actionsCount})
+              </button>
+            </li>
           </ul>
         </div>
 
@@ -627,7 +690,14 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                     onClick={handlePostComment}
                     disabled={postingComment || !newComment.trim()}
                   >
-                    {postingComment ? "Posting..." : "Post Comment"}
+                    {postingComment ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                        Posting...
+                      </>
+                    ) : (
+                      "Post Comment"
+                    )}
                   </button>
                 </div>
               </div>
@@ -711,7 +781,14 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                     onClick={handlePostNote}
                     disabled={postingNote || !newNote.trim()}
                   >
-                    {postingNote ? "Saving..." : "Save Internal Note"}
+                    {postingNote ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Internal Note"
+                    )}
                   </button>
                 </div>
               </div>
@@ -768,6 +845,19 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
               />
             </div>
           )}
+
+          {/* TAB 4: Actions Taken */}
+          {activeTab === "actions" && (
+            <div>
+              <ActionsTakenSection
+                ticketId={ticket.id}
+                readOnly={false}
+                initialActions={ticket.actionsTaken}
+                embedded={true}
+                onActionsChange={handleActionsChange}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -779,11 +869,12 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
           style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
           role="dialog"
           aria-modal="true"
+          aria-labelledby="status-modal-title"
         >
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 shadow">
               <div className="modal-header">
-                <h5 className="modal-title fw-bold">
+                <h5 id="status-modal-title" className="modal-title fw-bold">
                   {pendingStatus === "RESOLVED" && "Resolve Ticket"}
                   {pendingStatus === "CLOSED" && "Close Ticket"}
                   {pendingStatus === "REOPENED" && "Reopen Ticket"}
@@ -803,24 +894,44 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
               <div className="modal-body">
                 {pendingStatus === "RESOLVED" && (
                   <div>
-                    <p className="text-muted small mb-3">
-                      Please enter a resolution summary describing the fix. This will be visible to the requester.
-                    </p>
-                    <label htmlFor="modal-resolution-summary" className="form-label fw-semibold text-dark">
-                      Resolution Summary * (min 5 characters):
-                    </label>
-                    <textarea
-                      id="modal-resolution-summary"
-                      aria-label="Resolution Summary"
-                      className="form-control"
-                      rows={3}
-                      placeholder="e.g. Replaced faulty hardware unit and verified normal operation..."
-                      value={modalSummary}
-                      onChange={(e) => {
-                        setModalSummary(e.target.value);
-                        if (modalError) setModalError(null);
-                      }}
-                    />
+                    {actionsCount === 0 ? (
+                      <div className="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+                        <span>⚠️</span>
+                        <div>
+                          <strong>Resolution Gate:</strong> At least one Action Taken must be recorded before this ticket can be resolved.
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-muted small mb-3">
+                          Please enter a resolution summary describing the fix. This will be visible to the requester.
+                        </p>
+                        <label htmlFor="modal-resolution-summary" className="form-label fw-semibold text-dark">
+                          Resolution Summary * (min 5 characters):
+                        </label>
+                        <textarea
+                          id="modal-resolution-summary"
+                          aria-label="Resolution Summary"
+                          className="form-control"
+                          rows={3}
+                          maxLength={1000}
+                          placeholder="e.g. Replaced faulty hardware unit and verified normal operation..."
+                          value={modalSummary}
+                          onChange={(e) => {
+                            setModalSummary(e.target.value);
+                            if (modalError) setModalError(null);
+                          }}
+                        />
+                        <div className="d-flex justify-content-between align-items-center mt-1">
+                          <span className="small text-muted">
+                            {modalSummary.length} / 1000 characters
+                          </span>
+                          {modalSummary.trim().length > 0 && modalSummary.trim().length < 5 && (
+                            <span className="small text-danger">Minimum 5 characters required</span>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -901,8 +1012,15 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                     backgroundColor: pendingStatus === "CANCELLED" ? "#DC2626" : "#006B3C",
                   }}
                   onClick={handleConfirmModal}
-                  disabled={updatingStatus}
+                  disabled={
+                    updatingStatus ||
+                    (pendingStatus === "RESOLVED" &&
+                      (actionsCount === 0 || modalSummary.trim().length < 5 || modalSummary.trim().length > 1000))
+                  }
                 >
+                  {updatingStatus && (
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                  )}
                   {updatingStatus
                     ? "Updating..."
                     : pendingStatus === "RESOLVED"
@@ -912,6 +1030,66 @@ export const StaffDetailScreen: React.FC<StaffDetailScreenProps> = ({ ticketId, 
                     : pendingStatus === "REOPENED"
                     ? "Confirm Reopen"
                     : "Confirm Cancellation"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Optimistic Concurrency Conflict Dialog */}
+      {showConflictModal && (
+        <div
+          className="modal fade show d-block"
+          tabIndex={-1}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1060 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="conflict-modal-title"
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow">
+              <div className="modal-header bg-warning bg-opacity-10 border-bottom border-warning">
+                <h5 id="conflict-modal-title" className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                  <span>⚠️</span> Stale Record Detected
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label="Close"
+                  onClick={() => setShowConflictModal(false)}
+                />
+              </div>
+              <div className="modal-body">
+                <p className="text-dark mb-3">
+                  This ticket has been updated by another team member since you loaded the page.
+                  To prevent overwriting their work, please reload the ticket.
+                </p>
+                {conflictDetails && (
+                  <div className="small text-muted mb-2 font-monospace">
+                    {conflictDetails}
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={() => setShowConflictModal(false)}
+                >
+                  Dismiss
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm text-white"
+                  style={{ backgroundColor: "#006B3C" }}
+                  onClick={async () => {
+                    setShowConflictModal(false);
+                    setConflictDetails(null);
+                    await loadTicketData();
+                  }}
+                >
+                  Keep My Drafts & Refresh
                 </button>
               </div>
             </div>

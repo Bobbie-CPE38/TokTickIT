@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
@@ -22,23 +22,23 @@ test.describe("Visual Responsive Screenshots Capture", () => {
     ensureDir(path.join(screenshotsBase, "ticket-detail"));
   });
 
-  // Helper to log in as Jennifer Anderson
-  async function selectJennifer(page: any) {
-    await page.goto("/");
+  // Helper to sign in as a seeded Requester (Lab 3 replaced the Lab 2 requester selector with real login)
+  async function signIn(page: Page, email: string) {
+    await page.goto("/login");
     await page.evaluate(() => {
-      localStorage.setItem("toktickit_requester_id", "1");
-      localStorage.setItem(
-        "toktickit_requester_data",
-        JSON.stringify({
-          id: 1,
-          name: "Jennifer Anderson",
-          email: "jennifer.anderson@kmutt.ac.th",
-          department: "Computer Engineering",
-        })
-      );
+      localStorage.clear();
+      sessionStorage.clear();
     });
-    await page.reload();
+    await page.goto("/login");
+    await page.locator("#email").fill(email);
+    await page.locator("#password").fill("Password123!");
+    await page.locator('button[type="submit"]:has-text("Sign In")').click();
+    await expect(page).toHaveURL(/\/tickets/);
     await page.waitForSelector("header");
+  }
+
+  async function selectJennifer(page: Page) {
+    await signIn(page, "jennifer.anderson@kmutt.ac.th");
   }
 
   // -------------------------------------------------------------
@@ -178,10 +178,9 @@ test.describe("Visual Responsive Screenshots Capture", () => {
     // 05-my-tickets-requester-switch.png (Showing ticket list changing when switching requester)
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.locator('button[aria-label="Profile"]').click();
-    await page.locator('button:has-text("Switch Requester")').click();
-    await expect(page.locator("h1")).toContainText("Select Development Requester");
-    await page.locator("#requester-select").selectOption({ label: "David Lee" });
-    await page.locator('button[type="submit"]:has-text("Continue")').click();
+    await page.locator('button:has-text("Sign Out")').click();
+    await expect(page).toHaveURL(/\/login/);
+    await signIn(page, "david.lee@kmutt.ac.th");
     await expect(page.locator("header")).toContainText("David Lee");
     await expect(page.locator("table")).toBeVisible();
     await page.waitForTimeout(500);
