@@ -152,9 +152,7 @@
     - คำอธิบาย PR บอกว่า Lab 2 มี 43 เทสต์ใน server/tests/lab-02/ แต่รันจริงได้ 41 เทสต์ (ผ่านหมด) ควรแก้ตัวเลข
   ```
 - **How I responded:**
-  ```
-  Updated the testing guide and PR description to match the real behaviour (extra "Ticket Created Successfully" step, uppercase status names, 41 Lab 2 tests), then re-requested review.
-  ```
+  No comment was posted for this round. I updated the testing guide and PR description to match the real behaviour (extra "Ticket Created Successfully" step, uppercase status names, 41 Lab 2 tests), then re-requested review.
 - **Reviewer comment I received (Re-review):**
   Merge feature/lab4-ticket-workflow to lab4-staging branch
   ```
