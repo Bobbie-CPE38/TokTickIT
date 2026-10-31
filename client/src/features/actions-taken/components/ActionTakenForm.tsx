@@ -102,11 +102,15 @@ export const ActionTakenForm: React.FC<ActionTakenFormProps> = ({
   return (
     <div
       className="card mb-3 shadow-sm"
-      style={{
-        backgroundColor: "#FFFFFF",
-        borderColor: "#0B7A46",
-        borderRadius: "8px",
-      }}
+      // Card variables keep the header's inner radius matched to the outer radius, so the green border stays even
+      style={
+        {
+          backgroundColor: "#FFFFFF",
+          "--bs-card-border-color": "#0B7A46",
+          "--bs-card-border-radius": "8px",
+          "--bs-card-inner-border-radius": "7px",
+        } as React.CSSProperties
+      }
     >
       <div className="card-header bg-white border-bottom py-3 px-3 px-md-4">
         <h5 className="mb-0 fw-semibold" style={{ color: "#006B3C", fontSize: "1.05rem" }}>

@@ -233,7 +233,7 @@ export const DashboardTicketList: React.FC<{
         {items.map((t) => (
           <li
             key={t.id}
-            className="py-2"
+            className="dashboard-ticket-row position-relative py-2 px-2"
             style={{ borderTop: "1px solid #E2E8F0" }}
             data-testid="dashboard-ticket-row"
           >
@@ -241,7 +241,7 @@ export const DashboardTicketList: React.FC<{
               <div className="min-w-0" style={{ flex: "1 1 220px" }}>
                 <DashboardLink
                   to={t.to}
-                  className="fw-semibold text-decoration-none d-inline-flex align-items-center"
+                  className="fw-semibold text-decoration-none d-inline-flex align-items-center stretched-link"
                   style={{ color: "#0B7A46", fontSize: "0.875rem", minHeight: "32px" }}
                 >
                   {t.ticketNumber}

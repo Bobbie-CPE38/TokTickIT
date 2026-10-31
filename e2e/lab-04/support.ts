@@ -29,12 +29,16 @@ export function resetSeed() {
 
 export async function login(page: Page, user: SeedUser) {
   const { email, password, landing } = USERS[user];
-  await page.goto("/login");
+  // Clear the previous session from a blank same-origin page. Clearing it while the app runs lets the
+  // signed-in landing page fire requests without a token, which log 401 console errors at random.
+  await page.route("**/__e2e-blank", (route) => route.fulfill({ contentType: "text/html", body: "<html></html>" }));
+  await page.goto("/__e2e-blank");
   await page.evaluate(() => {
     localStorage.clear();
     sessionStorage.clear();
   });
-  // Re-enter /login directly: reloading a protected page would record it as the next intended destination
+  await page.unroute("**/__e2e-blank");
+  // Enter /login directly: reloading a protected page would record it as the next intended destination
   await page.goto("/login");
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);

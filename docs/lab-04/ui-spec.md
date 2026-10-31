@@ -208,7 +208,8 @@ All screens, components, and interactive states integrate seamlessly into a sing
 ### 5.3. Recent Tickets & Quick Actions Section
 - **Left Column (8/12 grid): "My Recent & Urgent Tickets"**
   - Displays urgent tickets (`itPriority = 'URGENT'`) pinned or badged at the top, followed by up to 5 most recently updated accessible tickets.
-  - Each item shows: Ticket Number (clickable link to `/queue/:id`), Priority badge (if High or Urgent), Summary, Status Badge, and Formatted Timestamp.
+  - Each item shows: Ticket Number, Priority badge (if High or Urgent), Summary, Status Badge, and Formatted Timestamp.
+  - The whole row is clickable and opens `/queue/:id` (`/tickets/:id` on the Requester Dashboard), with a pointer cursor and pale green (`#EAF6EF`) hover and focus highlight. Each row keeps one focusable link (the Ticket Number), so Tab and Enter work as before.
   - Header has "View all" link pointing to `/queue`.
   - Empty state (if 0 tickets): Displays a subtle icon and "No recent tickets to display."
 - **Right Column (4/12 grid): "Quick Actions"**
