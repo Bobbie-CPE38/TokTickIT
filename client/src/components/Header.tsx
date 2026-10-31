@@ -12,7 +12,8 @@ export type HeaderView =
   | "queue"
   | "staff-ticket-detail"
   | "user-management"
-  | "dashboard";
+  | "dashboard"
+  | "not-found";
 
 interface HeaderProps {
   currentView?: HeaderView;

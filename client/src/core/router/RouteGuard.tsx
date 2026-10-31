@@ -8,11 +8,13 @@ export type AppView =
   | "queue"
   | "staff-ticket-detail"
   | "user-management"
-  | "dashboard";
+  | "dashboard"
+  | "not-found";
 
 export function isViewPermittedForRole(view: AppView, role?: string): boolean {
   if (view === "login" || view === "change-password") return true;
   if (!role) return false;
+  if (view === "not-found") return true;
   if (view === "dashboard") return ["REQUESTER", "IT_STAFF", "ADMINISTRATOR"].includes(role);
   if (role === "REQUESTER") {
     return ["portal", "my-tickets", "create-ticket", "ticket-detail"].includes(view);
@@ -92,5 +94,8 @@ export function pathToView(path: string): { view: AppView; ticketId: number | nu
   if (pathname === "/dashboard") {
     return { view: "dashboard", ticketId: null };
   }
-  return { view: "my-tickets", ticketId: null };
+  if (pathname === "/" || pathname === "/tickets") {
+    return { view: "my-tickets", ticketId: null };
+  }
+  return { view: "not-found", ticketId: null };
 }

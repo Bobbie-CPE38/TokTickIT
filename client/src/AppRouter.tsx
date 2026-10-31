@@ -19,6 +19,7 @@ import { StaffQueueScreen } from "./features/staff/StaffQueueScreen.js";
 import { StaffDetailScreen } from "./features/staff/StaffDetailScreen.js";
 import { UserManagementScreen } from "./features/admin/UserManagementScreen.js";
 import { RoleDashboard } from "./features/dashboards/index.js";
+import { NotFoundScreen } from "./components/common/NotFoundScreen.js";
 
 export function AppRouter() {
   const auth = useAuth();
@@ -54,6 +55,7 @@ export function AppRouter() {
         intendedDestination &&
         intendedDestination.path !== "/" &&
         intendedDestination.path !== "/login" &&
+        pathToView(intendedDestination.path).view !== "not-found" &&
         isViewPermittedForRole(pathToView(intendedDestination.path).view, role)
       ) {
         const dest = intendedDestination.path;
@@ -185,6 +187,9 @@ export function AppRouter() {
     }
     if (view === "dashboard") {
       return <RoleDashboard />;
+    }
+    if (view === "not-found") {
+      return <NotFoundScreen onGoHome={() => navigateTo(viewToPath(getDefaultViewForRole(auth.user?.role)))} />;
     }
     return (
       <>

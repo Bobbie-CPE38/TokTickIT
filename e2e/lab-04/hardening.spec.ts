@@ -3,6 +3,7 @@ import {
   expectMobileTouchTargets,
   expectNoHorizontalOverflow,
   login,
+  openActionsTab,
   openStaffTicket,
   resetSeed,
   snap,
@@ -206,5 +207,65 @@ test.describe("Final hardening: form retention, double-submit guard, accessibili
     await visit("/admin/users", () => expect(page.getByRole("heading").first()).toBeVisible());
 
     expect(errors).toEqual([]);
+  });
+});
+
+test.describe("UI polish: unknown routes, clickable dashboard rows, Action Taken form border (Issue #58)", () => {
+  test.beforeEach(() => resetSeed());
+
+  test("An unknown URL shows Page not found and Go to home returns to the role's home view", async ({ page }) => {
+    await login(page, "michael");
+    await page.goto("/hehehe");
+    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    await expect(page).toHaveURL(/\/hehehe$/);
+    await expect(page.getByRole("heading", { name: "IT Staff Ticket Queue" })).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    await expectMobileTouchTargets(page, '[data-testid="not-found-screen"]');
+
+    await page.getByRole("button", { name: "Go to home" }).click();
+    await expect(page).toHaveURL(/\/queue$/);
+  });
+
+  test("Clicking anywhere on a dashboard ticket row opens the ticket; Enter on the row link still works", async ({ page }) => {
+    await login(page, "michael");
+    await page.goto("/dashboard");
+    const staffRow = page.getByTestId("dashboard-ticket-row").first();
+    const staffNumber = (await staffRow.getByRole("link").innerText()).trim();
+    // Click the row's empty right-hand edge (by the timestamp), away from the ticket-number text
+    const staffBox = (await staffRow.boundingBox())!;
+    await staffRow.click({ position: { x: staffBox.width - 6, y: staffBox.height / 2 } });
+    await expect(page).toHaveURL(/\/queue\/\d+$/);
+    await expect(page.getByText(staffNumber).first()).toBeVisible();
+
+    await login(page, "jennifer");
+    await page.goto("/dashboard");
+    const requesterRow = page.getByTestId("dashboard-ticket-row").first();
+    await expect(requesterRow).toHaveCSS("cursor", "pointer");
+    // Click the summary line (lower-left of the row)
+    const requesterBox = (await requesterRow.boundingBox())!;
+    await requesterRow.click({ position: { x: 24, y: requesterBox.height - 12 } });
+    await expect(page).toHaveURL(/\/tickets\/\d+$/);
+
+    await page.goto("/dashboard");
+    await page.getByTestId("dashboard-ticket-row").first().getByRole("link").focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/tickets\/\d+$/);
+  });
+
+  test("The Action Taken form keeps an even green border at the header corners", async ({ page, request }) => {
+    const ticketId = await ticketIdByNumber(request, "TKT-2026-000101");
+    await login(page, "michael");
+    await openStaffTicket(page, ticketId);
+    await openActionsTab(page);
+    await page.getByRole("button", { name: "+ Record Action Taken" }).click();
+
+    const header = page.locator(".card-header", { has: page.getByRole("heading", { name: "Record Action Taken" }) });
+    const card = header.locator("xpath=..");
+    await expect(card).toHaveCSS("border-top-color", "rgb(11, 122, 70)");
+    await expect(card).toHaveCSS("border-top-left-radius", "8px");
+    // The header sits inside the 1px border, so its corners must follow the inner radius instead of covering the border
+    await expect(header).toHaveCSS("border-top-left-radius", "7px");
+    await expect(header).toHaveCSS("border-top-right-radius", "7px");
+    await expectNoHorizontalOverflow(page);
   });
 });

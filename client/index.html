@@ -20,6 +20,16 @@
         box-shadow: 0 0 0 3px rgba(11, 122, 70, 0.2);
       }
 
+      /* Dashboard ticket rows: the ticket-number stretched link makes the whole row clickable (#58) */
+      .dashboard-ticket-row {
+        cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
+      }
+      .dashboard-ticket-row:hover,
+      .dashboard-ticket-row:focus-within {
+        background-color: #EAF6EF;
+      }
+
       /* Mobile touch targets >= 44px (ui-spec 9.3); overrides inline minHeight on buttons */
       @media (max-width: 767.98px) {
         .btn:not(.btn-close):not(.btn-link),
